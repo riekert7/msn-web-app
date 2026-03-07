@@ -1,0 +1,495 @@
+/* Copied from netlify-form/styles.css */
+/* Modern, professional styling for the study notes form */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background-color: #f5f5f5;
+    padding: 20px;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.form-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    text-align: center;
+}
+
+.form-header h1 {
+    font-size: 2rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.notice-section {
+    background-color: #f8f9fa;
+    padding: 25px 30px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.notice-section h3 {
+    color: #495057;
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+}
+
+.notice-section p {
+    margin-bottom: 15px;
+    color: #6c757d;
+}
+
+.notice-section ul {
+    margin: 15px 0;
+    padding-left: 20px;
+}
+
+.notice-section li {
+    margin-bottom: 8px;
+    color: #6c757d;
+}
+
+.banking-details {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    margin-top: 20px;
+    border-left: 4px solid #667eea;
+}
+
+.banking-details h4 {
+    color: #495057;
+    margin-bottom: 10px;
+}
+
+.banking-details p {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    color: #495057;
+}
+
+form {
+    padding: 30px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #495057;
+    font-size: 0.95rem;
+}
+
+.required {
+    color: #dc3545;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+select {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    background-color: #fff;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="tel"]:focus,
+select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+input[type="text"]::placeholder,
+input[type="email"]::placeholder,
+input[type="tel"]::placeholder {
+    color: #adb5bd;
+}
+
+.error-message {
+    color: #dc3545;
+    font-size: 0.85rem;
+    margin-top: 5px;
+    display: none;
+}
+
+.error-message.show {
+    display: block;
+}
+
+/* Module Sections */
+.module-section {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 25px;
+    margin: 25px 0;
+    border: 2px solid #e9ecef;
+    transition: all 0.3s ease;
+}
+
+.module-section.active {
+    border-color: #667eea;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.1);
+}
+
+.module-section h3 {
+    color: #495057;
+    margin-bottom: 20px;
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.chapters-container {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 30px;
+    align-items: start;
+}
+
+.chapters-selection h4 {
+    margin-bottom: 15px;
+    color: #495057;
+    font-size: 1.1rem;
+}
+
+.checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+}
+
+.checkbox-grid label {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    background: white;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.checkbox-grid label:hover {
+    border-color: #667eea;
+    background-color: #f8f9ff;
+}
+
+.checkbox-grid input[type="checkbox"] {
+    margin-right: 10px;
+    transform: scale(1.2);
+}
+
+.checkbox-grid label:has(input:checked) {
+    background-color: #667eea;
+    color: white;
+    border-color: #667eea;
+}
+
+.cost-calculator {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+    border: 2px solid #e9ecef;
+    position: sticky;
+    top: 20px;
+}
+
+.cost-calculator h4 {
+    margin-bottom: 15px;
+    color: #495057;
+    font-size: 1.1rem;
+}
+
+.cost-display {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #28a745;
+    font-family: 'Courier New', monospace;
+}
+
+/* File Upload */
+.file-upload-container {
+    position: relative;
+}
+
+.file-upload-area {
+    border: 3px dashed #e9ecef;
+    border-radius: 12px;
+    padding: 40px 20px;
+    text-align: center;
+    background: #f8f9fa;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.file-upload-area:hover,
+.file-upload-area.dragover {
+    border-color: #667eea;
+    background-color: #f8f9ff;
+}
+
+.upload-icon {
+    font-size: 3rem;
+    margin-bottom: 10px;
+}
+
+.file-upload-area p {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 5px;
+}
+
+.file-upload-area small {
+    color: #6c757d;
+}
+
+#proofOfPayment {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.file-preview {
+    margin-top: 15px;
+    padding: 15px;
+    background: #e8f5e8;
+    border-radius: 8px;
+    display: none;
+}
+
+.file-preview.show {
+    display: block;
+}
+
+.file-preview .file-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.file-preview .file-icon {
+    font-size: 1.5rem;
+}
+
+.file-preview .file-details {
+    flex: 1;
+}
+
+.file-preview .file-name {
+    font-weight: 600;
+    color: #495057;
+}
+
+.file-preview .file-size {
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+
+/* Total Cost */
+.total-cost {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+    margin: 25px 0;
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.2);
+}
+
+.total-cost h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+#totalCost {
+    font-family: 'Courier New', monospace;
+    font-size: 2rem;
+}
+
+/* Disclaimer */
+.disclaimer-section {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 12px;
+    padding: 25px;
+    margin: 25px 0;
+}
+
+.disclaimer-section h4 {
+    color: #856404;
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+}
+
+.disclaimer-content {
+    margin-bottom: 20px;
+}
+
+.disclaimer-content p {
+    margin-bottom: 15px;
+    color: #856404;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 600;
+    color: #856404;
+    cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+    transform: scale(1.3);
+}
+
+/* Form Actions */
+.form-actions {
+    text-align: center;
+    margin-top: 30px;
+}
+
+button[type="submit"] {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 15px 40px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+button[type="submit"]:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+button[type="submit"]:disabled {
+    background: #adb5bd;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.loading {
+    margin-top: 15px;
+    color: #667eea;
+    font-weight: 600;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .chapters-container {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .checkbox-grid {
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 8px;
+    }
+    
+    .cost-calculator {
+        position: static;
+    }
+    
+    form {
+        padding: 20px;
+    }
+    
+    .form-header {
+        padding: 20px;
+    }
+    
+    .form-header h1 {
+        font-size: 1.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .checkbox-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .checkbox-grid label {
+        justify-content: center;
+    }
+}
+
+/* Animation for smooth transitions */
+.module-section {
+    animation: slideIn 0.5s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Success states */
+.form-group.success input {
+    border-color: #28a745;
+}
+
+.form-group.error input {
+    border-color: #dc3545;
+}
+

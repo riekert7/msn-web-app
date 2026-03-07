@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EKN Chapters and Payment - MiyaStudyNotes</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="form-header">
+            <h1>EKN Chapters and Payment</h1>
+        </div>
+
+        <div class="notice-section">
+            <h3>Please note:</h3>
+            <p>If you purchase the notes I'll share them with you via Google Drive where you can access them digitally online - but you won't be able to print them. This is unfortunately due to some people being dishonest and redistributing the notes, unauthorized. I really cannot compromise with respect to this. I'm so sorry, I wish I could help you :(</p>
+            
+            <ul>
+                <li>Please do not send me eWallets.</li>
+                <li>Access your notes via "Shared with Me" on Google Drive.</li>
+            </ul>
+
+            <div class="banking-details">
+                <h4>Banking Details:</h4>
+                <p><strong>ABSA</strong><br>
+                Savings<br>
+                Beneficiary: Miya Koekemoer<br>
+                Account number: 9128508064<br>
+                Branch number: 632005<br>
+                Reference: your name &amp; your surname</p>
+            </div>
+        </div>
+
+        <form id="studyNotesForm" action="/submit" method="POST" enctype="multipart/form-data">
+            <!-- Name Fields -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="firstName">Name <span class="required">*</span></label>
+                    <input type="text" id="firstName" name="firstName" placeholder="First" required>
+                </div>
+                <div class="form-group">
+                    <label for="lastName">&nbsp;</label>
+                    <input type="text" id="lastName" name="lastName" placeholder="Last" required>
+                </div>
+            </div>
+
+            <!-- Email and Phone -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="email">Email (No "@icloud.com" emails please) <span class="required">*</span></label>
+                    <input type="email" id="email" name="email" placeholder="Email" required>
+                    <div class="error-message" id="emailError"></div>
+                </div>
+                <div class="form-group">
+                    <label for="phone">Phone (starting with 0) <span class="required">*</span></label>
+                    <input type="tel" id="phone" name="phone" placeholder="Phone (International)" required>
+                </div>
+            </div>
+
+            <!-- Module Selection -->
+            <div class="form-group">
+                <label for="module">Module <span class="required">*</span></label>
+                <select id="module" name="module" required>
+                    <option value="">Choice (Drop Down)</option>
+                    <option value="EKN110">EKN110</option>
+                    <option value="EKN120">EKN120</option>
+                    <option value="EKN214">EKN214</option>
+                </select>
+            </div>
+
+            <!-- EKN110 Chapters -->
+            <div id="ekn110Section" class="module-section" style="display: none;">
+                <h3>EKN110</h3>
+                <div class="chapters-container">
+                    <div class="chapters-selection">
+                        <h4>Which chapters would you like to purchase? <span class="required">*</span></h4>
+                        <div class="checkbox-grid">
+                            <label><input type="checkbox" name="chapters" value="EKN110-1" data-cost="15"> Chapter 1</label>
+                            <label><input type="checkbox" name="chapters" value="EKN110-2" data-cost="15"> Chapter 2</label>
+                            <label><input type="checkbox" name="chapters" value="EKN110-3" data-cost="15"> Chapter 3</label>
+                            <label><input type="checkbox" name="chapters" value="EKN110-4" data-cost="15"> Chapter 4</label>
+                            <label><input type="checkbox" name="chapters" value="EKN110-5" data-cost="15"> Chapter 5</label>
+                            <label><input type="checkbox" name="chapters" value="EKN110-6" data-cost="15"> Chapter 6</label>
+                            <label><input type="checkbox" name="chapters" value="EKN110-7" data-cost="15"> Chapter 7</label>
+                            <label><input type="checkbox" name="chapters" value="EKN110-8" data-cost="15"> Chapter 8</label>
+                            <label><input type="checkbox" name="chapters" value="EKN110-9" data-cost="15"> Chapter 9</label>
+                            <label><input type="checkbox" name="chapters" value="EKN110-10" data-cost="15"> Chapter 10</label>
+                        </div>
+                    </div>
+                    <div class="cost-calculator">
+                        <h4>Cost Calculator</h4>
+                        <div class="cost-display" id="ekn110Cost">R 0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- EKN120 Chapters -->
+            <div id="ekn120Section" class="module-section" style="display: none;">
+                <h3>EKN120</h3>
+                <div class="chapters-container">
+                    <div class="chapters-selection">
+                        <h4>Which chapters would you like to purchase? <span class="required">*</span></h4>
+                        <div class="checkbox-grid">
+                            <label><input type="checkbox" name="chapters" value="EKN120-11" data-cost="15"> Chapter 11</label>
+                            <label><input type="checkbox" name="chapters" value="EKN120-12" data-cost="15"> Chapter 12</label>
+                            <label><input type="checkbox" name="chapters" value="EKN120-13" data-cost="15"> Chapter 13</label>
+                            <label><input type="checkbox" name="chapters" value="EKN120-14" data-cost="15"> Chapter 14</label>
+                            <label><input type="checkbox" name="chapters" value="EKN120-15" data-cost="15"> Chapter 15</label>
+                            <label><input type="checkbox" name="chapters" value="EKN120-16" data-cost="15"> Chapter 16</label>
+                            <label><input type="checkbox" name="chapters" value="EKN120-17" data-cost="15"> Chapter 17</label>
+                            <label><input type="checkbox" name="chapters" value="EKN120-18" data-cost="15"> Chapter 18</label>
+                            <label><input type="checkbox" name="chapters" value="EKN120-19" data-cost="15"> Chapter 19</label>
+                            <label><input type="checkbox" name="chapters" value="EKN120-20" data-cost="15"> Chapter 20</label>
+                        </div>
+                    </div>
+                    <div class="cost-calculator">
+                        <h4>Cost Calculator</h4>
+                        <div class="cost-display" id="ekn120Cost">R 0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- EKN214 Chapters -->
+            <div id="ekn214Section" class="module-section" style="display: none;">
+                <h3>EKN214</h3>
+                <div class="chapters-container">
+                    <div class="chapters-selection">
+                        <h4>Which chapters would you like to purchase? <span class="required">*</span></h4>
+                        <div class="checkbox-grid">
+                            <label><input type="checkbox" name="chapters" value="EKN214-3" data-cost="20"> Chapter 3</label>
+                            <label><input type="checkbox" name="chapters" value="EKN214-4" data-cost="20"> Chapter 4</label>
+                            <label><input type="checkbox" name="chapters" value="EKN214-5" data-cost="20"> Chapter 5</label>
+                            <label><input type="checkbox" name="chapters" value="EKN214-6" data-cost="20"> Chapter 6</label>
+                            <label><input type="checkbox" name="chapters" value="EKN214-7" data-cost="20"> Chapter 7</label>
+                            <label><input type="checkbox" name="chapters" value="EKN214-8" data-cost="20"> Chapter 8</label>
+                            <label><input type="checkbox" name="chapters" value="EKN214-9" data-cost="20"> Chapter 9</label>
+                        </div>
+                    </div>
+                    <div class="cost-calculator">
+                        <h4>Cost Calculator</h4>
+                        <div class="cost-display" id="ekn214Cost">R 0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- File Upload -->
+            <div class="form-group">
+                <label for="proofOfPayment">Upload your proof of payment here: <span class="required">*</span></label>
+                <div class="file-upload-container">
+                    <input type="file" id="proofOfPayment" name="proofOfPayment" accept=".pdf,.jpg,.jpeg,.png" required>
+                    <div class="file-upload-area" id="fileUploadArea">
+                        <div class="upload-icon">📁</div>
+                        <p>Upload or drag files here</p>
+                        <small>Maximum file size: 5MB. Accepted formats: PDF, JPG, PNG</small>
+                    </div>
+                    <div class="file-preview" id="filePreview"></div>
+                </div>
+                <div class="error-message" id="fileError"></div>
+            </div>
+
+            <!-- Total Cost Display -->
+            <div class="total-cost">
+                <h3>Total Cost: <span id="totalCost">R 0</span></h3>
+            </div>
+
+            <!-- Disclaimer -->
+            <div class="disclaimer-section">
+                <h4>Disclaimer:</h4>
+                <div class="disclaimer-content">
+                    <p><strong>1.</strong> Please note that these notes were summarized from the prescribed textbook for this course. Should you not fully understand a concept, abbreviation, example or explanation, you are welcome to refer to the textbook for more extensive insights.</p>
+                    
+                    <p><strong>2.</strong> All headings and subheadings included in these notes are identical to those from the textbook, thus the source of these notes will by no means be difficult to find.</p>
+                    
+                    <p><strong>3.</strong> <em>For EKN110 and EKN120:</em> All graphs, tables and quick reviews included in these notes are not my own intellectual property. General Citation: Brue, S., McConnell, C., &amp; Janse Van Rensburg, J. (2022). Economics: A Southern African Context (3rd ed.). McGraw Hill. This citation can be referred to in every instance of the use of graphs, tables and quick reviews sourced from the above-mentioned textbook.</p>
+                    
+                    <p><strong>4.</strong> <em>For EKN214:</em> All graphs and tables included in these notes are not my own intellectual property. General Citation: Jones, C. I. (2020). <em>Macroeconomics</em> (5th ed.). W.W. Norton &amp; Company. This citation can be referred to in every instance of the use of graphs and tables sourced from the above-mentioned textbook.</p>
+                    
+                    <p><strong>5.</strong> These notes are the intellectual property of Miya Koekemoer. They are provided solely for personal use and study purposes. Any unauthorized reproduction, distribution, or sharing of these notes, whether in part or in whole, is strictly prohibited and may constitute a violation of copyright law. Purchasing or accessing these notes does not grant the right to redistribute or share them with others. By purchasing or accessing these notes, you agree to abide by these terms and conditions.</p>
+                    
+                    <p><strong>6.</strong> Happy studying! :)</p>
+                </div>
+                
+                <label class="checkbox-label">
+                    <input type="checkbox" id="disclaimerAgree" name="disclaimerAgree" required>
+                    I have read the above "Disclaimer"
+                </label>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="form-actions">
+                <button type="submit" id="submitBtn" disabled>Submit Request</button>
+                <div class="loading" id="loadingSpinner" style="display: none;">Processing...</div>
+            </div>
+        </form>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
+
