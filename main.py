@@ -396,8 +396,7 @@ def share_study_materials(email: str, module: str, chapters: list) -> list:
                     drive.permissions().create(
                         fileId=f["id"],
                         body=perm,
-                        sendNotificationEmail=True,
-                        emailMessage="Your study materials are now available. Check Shared with Me in Google Drive.",
+                        sendNotificationEmails=False,
                         supportsAllDrives=True,
                     ).execute()
                     shared.append({"id": f["id"], "name": f["name"], "chapter": num})
@@ -494,7 +493,7 @@ def send_student_denied_email(submission_data: dict) -> bool:
     return _send_smtp_email(to, subject, body)
 
 
-@app.get("/")
+@app.get("/form")
 def index():
     """Render the main form."""
     return render_template("form.html")

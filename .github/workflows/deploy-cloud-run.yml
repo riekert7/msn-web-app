@@ -1,0 +1,66 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  REGION: ${{ vars.CLOUD_RUN_REGION }}
+  SERVICE: msn-web-app
+
+jobs:
+  deploy:
+    environment: prod
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: miyastudynotes-sa@miya-study-notes.iam.gserviceaccount.com
+
+      - name: Set up gcloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Build and push container image (Cloud Build)
+        run: |
+          gcloud builds submit \
+            --project "$PROJECT_ID" \
+            --tag "gcr.io/$PROJECT_ID/$SERVICE"
+
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          service: ${{ env.SERVICE }}
+          image: gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }}
+          region: ${{ env.REGION }}
+          allow_unauthenticated: true
+          flags: >
+            --service-account=miyastudynotes-sa@miya-study-notes.iam.gserviceaccount.com
+          env_vars: |
+            GCS_BUCKET_NAME=${{ vars.GCS_BUCKET_NAME }}
+            GOOGLE_SHEETS_ID=${{ vars.GOOGLE_SHEETS_ID }}
+            EKN110_FOLDER_ID=${{ vars.EKN110_FOLDER_ID }}
+            EKN120_FOLDER_ID=${{ vars.EKN120_FOLDER_ID }}
+            EKN214_FOLDER_ID=${{ vars.EKN214_FOLDER_ID }}
+            SMTP_HOST=${{ vars.SMTP_HOST }}
+            SMTP_PORT=${{ vars.SMTP_PORT }}
+            FROM_EMAIL=${{ vars.FROM_EMAIL }}
+            ADMIN_EMAIL=${{ vars.ADMIN_EMAIL }}
+            BASE_URL=${{ vars.BASE_URL }}
+            SMTP_USERNAME=${{ secrets.SMTP_USERNAME }}
+            SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
+            APPROVAL_SECRET=${{ secrets.APPROVAL_SECRET }}
