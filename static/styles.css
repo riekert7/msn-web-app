@@ -74,13 +74,56 @@ body {
 
 .banking-details h4 {
     color: #495057;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
 }
 
-.banking-details p {
+.bank-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.bank-row {
+    display: grid;
+    grid-template-columns: 140px 1fr auto;
+    align-items: center;
+    gap: 12px;
     font-family: 'Courier New', monospace;
     font-size: 0.9rem;
     color: #495057;
+}
+
+.bank-label {
+    font-weight: 600;
+    color: #6c757d;
+}
+
+.bank-value {
+    word-break: break-all;
+}
+
+.bank-copy-btn {
+    border: none;
+    background: #eef1ff;
+    color: #4c5fd7;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    flex-shrink: 0;
+}
+
+.bank-copy-btn:hover {
+    background: #4c5fd7;
+    color: #fff;
+}
+
+.bank-copy-btn.copied {
+    background: #28a745;
+    color: #fff;
 }
 
 form {

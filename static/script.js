@@ -36,6 +36,9 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeForm();
     
     function initializeForm() {
+        // Banking details per-field copy buttons
+        setupBankingDetailsCopy();
+
         // Module selection handler
         moduleSelect.addEventListener('change', handleModuleChange);
         
@@ -60,6 +63,41 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Initial state
         updateSubmitButton();
+    }
+
+    function setupBankingDetailsCopy() {
+        document.querySelectorAll('.bank-copy-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const targetId = btn.dataset.copyTarget;
+                const el = document.getElementById(targetId);
+                if (!el) return;
+                const text = (el.textContent || el.innerText || '').trim();
+
+                try {
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        await navigator.clipboard.writeText(text);
+                    } else {
+                        const textarea = document.createElement('textarea');
+                        textarea.value = text;
+                        textarea.style.position = 'fixed';
+                        textarea.style.opacity = '0';
+                        document.body.appendChild(textarea);
+                        textarea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textarea);
+                    }
+                    const originalText = btn.textContent;
+                    btn.classList.add('copied');
+                    btn.textContent = 'Copied';
+                    setTimeout(() => {
+                        btn.classList.remove('copied');
+                        btn.textContent = originalText;
+                    }, 1200);
+                } catch (err) {
+                    console.error('Failed to copy', err);
+                }
+            });
+        });
     }
     
     function handleModuleChange() {
