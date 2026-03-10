@@ -47,8 +47,8 @@ jobs:
           service: ${{ env.SERVICE }}
           image: gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }}
           region: ${{ env.REGION }}
-          allow_unauthenticated: true
           flags: >
+            --allow-unauthenticated
             --service-account=miyastudynotes-sa@miya-study-notes.iam.gserviceaccount.com
           env_vars: |
             GCS_BUCKET_NAME=${{ vars.GCS_BUCKET_NAME }}
