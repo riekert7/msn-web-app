@@ -1,6 +1,7 @@
 import hmac
 import hashlib
 import os
+import re
 import json
 import smtplib
 import ssl
@@ -96,6 +97,18 @@ def _approval_token(submission_id: str) -> str:
 
 def _verify_approval_token(submission_id: str, token: str) -> bool:
     return token and hmac.compare_digest(_approval_token(submission_id), token)
+
+
+def _phone_to_whatsapp(phone: str, country_code: str = "27") -> str:
+    """Normalize phone for wa.me link. South African: 0793688500 -> 27793688500."""
+    digits = "".join(c for c in (phone or "") if c.isdigit())
+    if not digits:
+        return ""
+    if digits.startswith("0"):
+        digits = country_code + digits[1:]
+    elif not digits.startswith(country_code):
+        digits = country_code + digits
+    return digits
 
 
 def _email_debug(msg: str) -> None:
@@ -220,29 +233,46 @@ def send_admin_new_submission_email(
     approve_url = f"{base_url}/approve/{sid}?token={token}"
     deny_url = f"{base_url}/deny/{sid}?token={token}"
 
+    student_email = submission_data["email"]
+    student_phone = submission_data.get("phone", "")
+    wa_student = _phone_to_whatsapp(student_phone)
+    mailto_student = f"mailto:{student_email}"
+    wa_student_url = f"https://wa.me/{wa_student}" if wa_student else ""
+
     subject = "MiyaStudyNotes: New study material request – approve or deny"
     body_text = (
         f"New submission received.\n\n"
         f"Submission ID: {sid}\n"
         f"Name: {submission_data['first_name']} {submission_data['last_name']}\n"
-        f"Email: {submission_data['email']}\n"
+        f"Email: {student_email}\n"
         f"Phone: {submission_data['phone']}\n"
         f"Module: {submission_data['module']}\n"
         f"Chapters: {', '.join(submission_data['chapters'])}\n"
         f"Total cost: R{submission_data['total_cost']}\n"
         f"Payment file: {filename} (attached)\n\n"
+        f"Reach student: Email {student_email}"
+        + (f" | WhatsApp https://wa.me/{wa_student}" if wa_student else "")
+        + "\n\n"
         f"Approve: {approve_url}\n"
         f"Deny: {deny_url}\n"
     )
+    reach_html = (
+        f'<p><strong>Reach student:</strong> '
+        f'<a href="{mailto_student}" style="color:#667eea;">Email</a>'
+    )
+    if wa_student_url:
+        reach_html += f' | <a href="{wa_student_url}" style="color:#25D366;">WhatsApp</a>'
+    reach_html += "</p>"
     body_html = (
         f"<p>New submission received.</p>"
         f"<p><strong>Name:</strong> {submission_data['first_name']} {submission_data['last_name']}<br>"
-        f"<strong>Email:</strong> {submission_data['email']}<br>"
+        f"<strong>Email:</strong> {student_email}<br>"
         f"<strong>Phone:</strong> {submission_data['phone']}<br>"
         f"<strong>Module:</strong> {submission_data['module']}<br>"
         f"<strong>Chapters:</strong> {', '.join(submission_data['chapters'])}<br>"
         f"<strong>Total cost:</strong> R{submission_data['total_cost']}</p>"
         f"<p>Proof of payment is attached.</p>"
+        f"{reach_html}"
         f"<p>"
         f'<a href="{approve_url}" style="display:inline-block;background:#28a745;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;margin-right:10px;">Approve</a>'
         f'<a href="{deny_url}" style="display:inline-block;background:#dc3545;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;">Deny</a>'
@@ -297,6 +327,7 @@ def send_student_confirmation_email(submission_data: dict) -> bool:
         f"Chapters: {', '.join(submission_data['chapters'])}\n"
         f"Total: R{submission_data['total_cost']}\n\n"
         f"We'll review your proof of payment and send you access to the notes via Google Drive once approved.\n\n"
+        f"Need help? WhatsApp us: https://wa.me/27793688500\n\n"
         f"Thanks,\nMiya Study Notes"
     )
     return _send_smtp_email(to_email, subject, body)
@@ -357,12 +388,19 @@ def _get_drive_service():
     return build("drive", "v3", credentials=creds)
 
 
+def _chapter_number_exact_in_name(name: str, module: str, chapter_number: str) -> bool:
+    """True if name contains 'Module - Chapter N' where N is exactly chapter_number (not 10 when N is 1)."""
+    # Next char after chapter_number must be non-digit or end, so "Chapter 1" doesn't match "Chapter 10"
+    pattern = re.escape(module) + r" - Chapter " + re.escape(chapter_number) + r"(?:\D|$)"
+    return re.search(pattern, name) is not None
+
+
 def _find_chapter_files(drive, parent_folder_id: str, module: str, chapter_number: str) -> list:
-    """Find Drive files for a chapter by name pattern: '<MODULE> - Chapter <N>'."""
+    """Find Drive files for a chapter by name pattern: '<MODULE> - Chapter <N>' (exact N, not 10 for 1)."""
     if not parent_folder_id:
         return []
-    # Trailing space so "Chapter 1" doesn't match "Chapter 10"
-    pattern = f"{module} - Chapter {chapter_number} "
+    # Contains is broad (e.g. "Chapter 1" matches "Chapter 10"); we post-filter for exact chapter number
+    pattern = f"{module} - Chapter {chapter_number}"
     q = f"parents in '{parent_folder_id}' and name contains '{pattern}' and trashed=false"
     res = drive.files().list(
         q=q,
@@ -370,7 +408,8 @@ def _find_chapter_files(drive, parent_folder_id: str, module: str, chapter_numbe
         includeItemsFromAllDrives=True,
         supportsAllDrives=True,
     ).execute()
-    return res.get("files", [])
+    files = res.get("files", [])
+    return [f for f in files if _chapter_number_exact_in_name(f.get("name", ""), module, chapter_number)]
 
 
 def share_study_materials(email: str, module: str, chapters: list) -> list:
@@ -501,6 +540,7 @@ def send_student_approved_email(submission_data: dict, shared_files: list) -> bo
         f"Your {module} study notes have been approved. We've shared the files with you on Google Drive.\n\n"
         f"Check your Google Drive under \"Shared with me\" for the following:\n\n{links_text}\n\n"
         f"If you don't see them, check your email for the Drive share notification and mark it as not spam.\n\n"
+        f"Need help? WhatsApp us: https://wa.me/27793688500\n\n"
         f"Thanks,\nMiya Study Notes"
     )
     return _send_smtp_email(to, subject, body)
@@ -515,7 +555,7 @@ def send_student_denied_email(submission_data: dict) -> bool:
     body = (
         f"Hi {name},\n\n"
         f"Unfortunately your request for {module} study materials could not be approved at this time. "
-        f"If you have questions, please reply to this email or contact support.\n\n"
+        f"If you have questions, WhatsApp us: https://wa.me/27793688500 or reply to this email.\n\n"
         f"Thanks,\nMiya Study Notes"
     )
     return _send_smtp_email(to, subject, body)
