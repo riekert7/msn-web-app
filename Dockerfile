@@ -15,6 +15,6 @@ COPY . .
 # Cloud Run provides PORT; default to 8080 for local runs
 ENV PORT=8080
 
-# Gunicorn entrypoint for the Flask app defined in main.py as `app`
-CMD ["gunicorn", "-b", "0.0.0.0:8080", "main:app"]
+# Gunicorn: longer timeout for approve/deny (Drive + Sheets + email)
+CMD ["gunicorn", "-b", "0.0.0.0:8080", "--timeout", "120", "main:app"]
 

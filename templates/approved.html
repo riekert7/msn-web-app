@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Request approved – Miya Study Notes</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="form-header">
+            <h1>Request approved</h1>
+        </div>
+        <div class="action-result action-result-success">
+            <div class="action-result-icon">✓</div>
+            <h2>All set</h2>
+            <p>Study materials have been shared with the student on Google Drive and they have been emailed.</p>
+            <a href="{{ url_for('home') }}" class="btn-primary">Back to website</a>
+        </div>
+    </div>
+</body>
+</html>

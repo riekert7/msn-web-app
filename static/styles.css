@@ -43,6 +43,231 @@ body {
     border-bottom: 1px solid #e9ecef;
 }
 
+.form-header-with-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.form-header-with-nav h1 {
+    margin: 0;
+}
+
+.header-link {
+    color: #e0e7ff;
+    font-size: 0.9rem;
+    text-decoration: none;
+    font-weight: 500;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(224, 231, 255, 0.6);
+    background: rgba(15, 23, 42, 0.15);
+    white-space: nowrap;
+}
+
+.header-link:hover {
+    background: rgba(15, 23, 42, 0.3);
+}
+
+/* Approve / Deny result pages */
+.form-header-denied {
+    background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+}
+
+.form-header-message {
+    background: linear-gradient(135deg, #5a6268 0%, #343a40 100%);
+}
+
+.action-result {
+    padding: 32px 30px;
+    text-align: center;
+}
+
+.action-result-icon {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 16px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.75rem;
+    font-weight: 700;
+}
+
+.action-result-success .action-result-icon {
+    background: #d4edda;
+    color: #155724;
+}
+
+.action-result-denied .action-result-icon {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.action-result h2 {
+    font-size: 1.35rem;
+    margin-bottom: 10px;
+    color: #343a40;
+}
+
+.action-result p {
+    color: #6c757d;
+    margin-bottom: 20px;
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.action-result .btn-primary {
+    display: inline-block;
+    padding: 12px 24px;
+    border-radius: 999px;
+    font-weight: 600;
+    text-decoration: none;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.action-result .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.35);
+}
+
+.action-result-message p {
+    margin-bottom: 20px;
+}
+
+/* Landing page */
+.landing-hero {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 40px 30px 32px;
+}
+
+.landing-hero-content h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+.landing-tagline {
+    font-size: 1.1rem;
+    margin-bottom: 12px;
+    color: #e0e7ff;
+}
+
+.landing-subtext {
+    font-size: 0.98rem;
+    color: #cbd5ff;
+    max-width: 600px;
+}
+
+.landing-main {
+    padding: 30px;
+}
+
+.landing-section {
+    margin-bottom: 32px;
+}
+
+.landing-section-alt {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 24px 20px;
+}
+
+.landing-section h2 {
+    font-size: 1.6rem;
+    margin-bottom: 16px;
+    color: #343a40;
+}
+
+.landing-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+}
+
+.landing-card {
+    background: white;
+    border-radius: 12px;
+    padding: 18px 16px;
+    border: 1px solid #e9ecef;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.landing-card h3 {
+    margin-bottom: 8px;
+    font-size: 1.15rem;
+    color: #495057;
+}
+
+.landing-card p {
+    font-size: 0.96rem;
+    color: #6c757d;
+}
+
+.landing-cta {
+    margin-top: 18px;
+    display: flex;
+    gap: 12px;
+}
+
+.landing-cta.center {
+    justify-content: center;
+}
+
+.btn-primary,
+.btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 20px;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-primary {
+    background: #ffffff;
+    color: #4c51bf;
+    box-shadow: 0 4px 15px rgba(15, 23, 42, 0.25);
+}
+
+.btn-primary:hover {
+    background: #eef2ff;
+}
+
+.btn-secondary {
+    background: rgba(15, 23, 42, 0.15);
+    color: #e0e7ff;
+}
+
+.btn-secondary:hover {
+    background: rgba(15, 23, 42, 0.3);
+}
+
+.steps-list {
+    margin-left: 20px;
+    color: #495057;
+}
+
+.steps-list li {
+    margin-bottom: 8px;
+}
+
+.landing-subtext.center {
+    text-align: center;
+}
+
 .notice-section h3 {
     color: #495057;
     margin-bottom: 15px;
@@ -85,7 +310,7 @@ body {
 
 .bank-row {
     display: grid;
-    grid-template-columns: 140px 1fr auto;
+    grid-template-columns: 130px minmax(0, 1fr) auto;
     align-items: center;
     gap: 12px;
     font-family: 'Courier New', monospace;
@@ -499,6 +724,15 @@ button[type="submit"]:disabled {
     .form-header h1 {
         font-size: 1.5rem;
     }
+
+    .form-header-with-nav {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .landing-main {
+        padding: 20px;
+    }
 }
 
 @media (max-width: 480px) {
@@ -508,6 +742,16 @@ button[type="submit"]:disabled {
     
     .checkbox-grid label {
         justify-content: center;
+    }
+
+    .bank-row {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+
+    .bank-copy-btn {
+        justify-self: flex-start;
+        margin-top: 2px;
     }
 }
 

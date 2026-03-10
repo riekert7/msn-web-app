@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Request denied – Miya Study Notes</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="form-header form-header-denied">
+            <h1>Request denied</h1>
+        </div>
+        <div class="action-result action-result-denied">
+            <div class="action-result-icon">✕</div>
+            <h2>Done</h2>
+            <p>The student has been notified by email that their request could not be approved.</p>
+            <a href="{{ url_for('home') }}" class="btn-primary">Back to website</a>
+        </div>
+    </div>
+</body>
+</html>

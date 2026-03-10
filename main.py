@@ -361,7 +361,8 @@ def _find_chapter_files(drive, parent_folder_id: str, module: str, chapter_numbe
     """Find Drive files for a chapter by name pattern: '<MODULE> - Chapter <N>'."""
     if not parent_folder_id:
         return []
-    pattern = f"{module} - Chapter {chapter_number}"
+    # Trailing space so "Chapter 1" doesn't match "Chapter 10"
+    pattern = f"{module} - Chapter {chapter_number} "
     q = f"parents in '{parent_folder_id}' and name contains '{pattern}' and trashed=false"
     res = drive.files().list(
         q=q,
@@ -412,7 +413,7 @@ def share_study_materials(email: str, module: str, chapters: list) -> list:
                     drive.permissions().create(
                         fileId=f["id"],
                         body=perm,
-                        sendNotificationEmails=False,
+                        sendNotificationEmail=False,
                         supportsAllDrives=True,
                     ).execute()
                     print(
@@ -520,9 +521,15 @@ def send_student_denied_email(submission_data: dict) -> bool:
     return _send_smtp_email(to, subject, body)
 
 
+@app.get("/")
+def home():
+    """Render the marketing landing page."""
+    return render_template("index.html")
+
+
 @app.get("/form")
-def index():
-    """Render the main form."""
+def form():
+    """Render the main request form."""
     return render_template("form.html")
 
 
@@ -684,7 +691,7 @@ def approve(submission_id: str):
     token = request.args.get("token")
     if not _verify_approval_token(submission_id, token or ""):
         return (
-            "<html><body><h1>Invalid or expired link</h1><p>This approval link is invalid or has expired.</p></body></html>",
+            render_template("action_message.html", title="Invalid or expired link", message="This approval link is invalid or has expired."),
             403,
             {"Content-Type": "text/html"},
         )
@@ -692,7 +699,7 @@ def approve(submission_id: str):
         data = get_submission_data(submission_id)
         if data.get("status") not in ("pending", None):
             return (
-                f"<html><body><h1>Already processed</h1><p>This request was already {data.get('status')}.</p></body></html>",
+                render_template("action_message.html", title="Already processed", message=f"This request was already {data.get('status')}."),
                 200,
                 {"Content-Type": "text/html"},
             )
@@ -701,14 +708,14 @@ def approve(submission_id: str):
         update_google_sheets_status(submission_id, "approved", {"shared_files": shared})
         send_student_approved_email(data, shared)
         return (
-            "<html><body><h1>Request approved</h1><p>Study materials have been shared with the student and they have been emailed.</p></body></html>",
+            render_template("approved.html"),
             200,
             {"Content-Type": "text/html"},
         )
     except Exception as e:
         print(f"Approval error: {e}")
         return (
-            f"<html><body><h1>Error</h1><p>Something went wrong: {e}</p></body></html>",
+            render_template("action_message.html", title="Error", message=f"Something went wrong: {e}"),
             500,
             {"Content-Type": "text/html"},
         )
@@ -720,7 +727,7 @@ def deny(submission_id: str):
     token = request.args.get("token")
     if not _verify_approval_token(submission_id, token or ""):
         return (
-            "<html><body><h1>Invalid or expired link</h1><p>This link is invalid or has expired.</p></body></html>",
+            render_template("action_message.html", title="Invalid or expired link", message="This link is invalid or has expired."),
             403,
             {"Content-Type": "text/html"},
         )
@@ -728,7 +735,7 @@ def deny(submission_id: str):
         data = get_submission_data(submission_id)
         if data.get("status") not in ("pending", None):
             return (
-                f"<html><body><h1>Already processed</h1><p>This request was already {data.get('status')}.</p></body></html>",
+                render_template("action_message.html", title="Already processed", message=f"This request was already {data.get('status')}."),
                 200,
                 {"Content-Type": "text/html"},
             )
@@ -736,14 +743,14 @@ def deny(submission_id: str):
         update_google_sheets_status(submission_id, "denied")
         send_student_denied_email(data)
         return (
-            "<html><body><h1>Request denied</h1><p>The student has been notified by email.</p></body></html>",
+            render_template("denied.html"),
             200,
             {"Content-Type": "text/html"},
         )
     except Exception as e:
         print(f"Deny error: {e}")
         return (
-            f"<html><body><h1>Error</h1><p>Something went wrong: {e}</p></body></html>",
+            render_template("action_message.html", title="Error", message=f"Something went wrong: {e}"),
             500,
             {"Content-Type": "text/html"},
         )
