@@ -385,12 +385,28 @@ def share_study_materials(email: str, module: str, chapters: list) -> list:
     if not parent_id:
         raise ValueError(f"No folder mapping for module: {module}")
 
+    print(
+        f"[DRIVE] share_study_materials email={email} module={module} "
+        f"chapters={chapters} parent_id={parent_id}"
+    )
+
     drive = _get_drive_service()
     shared = []
     for chapter in chapters:
         try:
             num = chapter.split("-")[1]
-            for f in _find_chapter_files(drive, parent_id, module, num):
+            files = _find_chapter_files(drive, parent_id, module, num)
+            if not files:
+                print(
+                    f"[DRIVE] No files found for module={module} chapter={num} "
+                    f"under parent={parent_id}"
+                )
+            else:
+                print(
+                    f"[DRIVE] Found {len(files)} files for module={module} "
+                    f"chapter={num}: {[f'{x.get('name')} ({x.get('id')})' for x in files]}"
+                )
+            for f in files:
                 perm = {"role": "reader", "type": "user", "emailAddress": email}
                 try:
                     drive.permissions().create(
@@ -399,11 +415,15 @@ def share_study_materials(email: str, module: str, chapters: list) -> list:
                         sendNotificationEmails=False,
                         supportsAllDrives=True,
                     ).execute()
+                    print(
+                        f"[DRIVE] Shared file id={f['id']} name={f['name']} "
+                        f"with {email} for chapter={num}"
+                    )
                     shared.append({"id": f["id"], "name": f["name"], "chapter": num})
                 except HttpError as e:
-                    print(f"Drive permission error for {f['id']}: {e}")
+                    print(f"[DRIVE] Permission error for file {f['id']}: {e}")
         except Exception as e:
-            print(f"Share chapter {chapter}: {e}")
+            print(f"[DRIVE] Share chapter {chapter}: {e}")
     return shared
 
 
@@ -424,6 +444,7 @@ def update_google_sheets_status(submission_id: str, status: str, admin_action: d
     """Update status and approval date in the Submissions sheet."""
     sheets_id = os.environ.get("GOOGLE_SHEETS_ID")
     if not sheets_id:
+        print("[SHEETS] GOOGLE_SHEETS_ID not configured; skipping status update")
         return False
     try:
         creds, _ = default(scopes=["https://www.googleapis.com/auth/spreadsheets"])
@@ -435,9 +456,11 @@ def update_google_sheets_status(submission_id: str, status: str, admin_action: d
         row_index = None
         for i, row in enumerate(values):
             if len(row) > 1 and row[1] == submission_id:
+                print(f"[SHEETS] Found submission_id={submission_id} at row index {i+1}")
                 row_index = i + 1
                 break
         if row_index is None:
+            print(f"[SHEETS] submission_id={submission_id} not found in sheet; cannot update")
             return False
         now = datetime.now(timezone.utc).isoformat()
         service.spreadsheets().values().update(
@@ -452,9 +475,13 @@ def update_google_sheets_status(submission_id: str, status: str, admin_action: d
             valueInputOption="RAW",
             body={"values": [[now]]},
         ).execute()
+        print(
+            f"[SHEETS] Updated status for submission_id={submission_id} to {status} "
+            f"at row {row_index}"
+        )
         return True
     except Exception as e:
-        print(f"Update sheets status: {e}")
+        print(f"[SHEETS] Update status error for submission_id={submission_id}: {e}")
         return False
 
 
