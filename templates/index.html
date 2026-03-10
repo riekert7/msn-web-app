@@ -3,124 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Miya Study Notes – EKN Modules</title>
+    <title>Miya's Study Notes – EKN Modules</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
     <div class="container">
         <header class="landing-hero">
             <div class="landing-hero-content">
-                <h1>Miya Study Notes</h1>
+                <h1>Miya's Study Notes</h1>
                 <p class="landing-tagline">
-                    High-quality, exam-focused notes for EKN110, EKN120 and EKN214 –
-                    crafted by a top-performing Economics student and tutor.
+                    High-quality, exam-focused notes for EKN110, EKN120 and EKN214.
                 </p>
                 <p class="landing-subtext">
-                    Save hours of rewriting the textbook. Study from structured, visual notes that
-                    follow your official syllabus chapter-by-chapter.
+                    Choose your chapters, pay, upload proof – I’ll share the notes via Google Drive. Save time with structured notes that follow your syllabus.
                 </p>
                 <div class="landing-cta">
                     <a href="{{ url_for('home') }}#how-it-works" class="btn-secondary">How it works</a>
-                    <a href="{{ url_for('form') }}" class="btn-primary">Request your notes</a>
+                    <a href="{{ url_for('form') }}" class="btn-primary">Request notes</a>
                 </div>
             </div>
         </header>
 
         <main class="landing-main">
             <section id="why-notes" class="landing-section">
-                <h2>Why students love these notes</h2>
+                <h2>Why these notes</h2>
                 <div class="landing-grid">
                     <div class="landing-card">
-                        <h3>Made for EKN students</h3>
-                        <p>
-                            Notes are written specifically for <strong>EKN110, EKN120 and EKN214</strong>
-                            using your official prescribed textbooks and outcomes.
-                        </p>
+                        <h3>For EKN students</h3>
+                        <p>Written for EKN110, EKN120 and EKN214 using your prescribed material.</p>
                     </div>
                     <div class="landing-card">
-                        <h3>Structured for exams</h3>
-                        <p>
-                            Content is organised by chapter and subheading, with diagrams, tables and
-                            quick reviews where they matter most.
-                        </p>
+                        <h3>Exam-ready</h3>
+                        <p>Structured by chapter with diagrams and summaries where they matter.</p>
                     </div>
                     <div class="landing-card">
-                        <h3>Digital &amp; convenient</h3>
-                        <p>
-                            After payment and approval you get secure access via <strong>Google Drive</strong>
-                            – easy to open on laptop or tablet whenever you study.
-                        </p>
+                        <h3>Digital access</h3>
+                        <p>After approval you get access via Google Drive – use on any device.</p>
                     </div>
                 </div>
             </section>
 
-            <section id="about" class="landing-section landing-section-alt">
-                <h2>Meet Miya</h2>
-                <p>
-                    Miya is an Economics student and tutor who has spent years turning dense textbook
-                    chapters into clear, concise study notes. These notes started as her personal
-                    summaries and have grown into a resource used by many EKN students.
-                </p>
-                <p>
-                    Every set is updated with the latest prescribed editions and aligned with what
-                    lecturers actually expect in tests and exams.
-                </p>
-            </section>
-
-            <section id="how-it-works" class="landing-section">
+            <section id="how-it-works" class="landing-section landing-section-alt">
                 <h2>How it works</h2>
                 <ol class="steps-list">
-                    <li><strong>Choose your module and chapters.</strong> Use the online form to pick exactly which chapters you need.</li>
-                    <li><strong>Make payment and upload proof.</strong> EFT using the banking details on the form, then upload your proof of payment.</li>
-                    <li><strong>Approval.</strong> Your submission is reviewed and confirmed.</li>
-                    <li><strong>Get access on Google Drive.</strong> Once approved, the notes are shared to your email via Google Drive.</li>
+                    <li><strong>Choose module and chapters</strong> on the form.</li>
+                    <li><strong>Pay (EFT)</strong> and upload proof of payment.</li>
+                    <li><strong>I approve</strong> and share the notes to your email via Google Drive.</li>
                 </ol>
-                <div class="landing-cta center">
-                    <a href="{{ url_for('form') }}" class="btn-primary">Start your request</a>
-                </div>
-            </section>
-
-            <section id="modules" class="landing-section landing-section-alt">
-                <h2>Modules available</h2>
-                <div class="landing-grid">
-                    <div class="landing-card">
-                        <h3>EKN110</h3>
-                        <p>Introductory microeconomics, theory and diagrams made digestible.</p>
-                    </div>
-                    <div class="landing-card">
-                        <h3>EKN120</h3>
-                        <p>Introductory macroeconomics, business cycles and policy summarized.</p>
-                    </div>
-                    <div class="landing-card">
-                        <h3>EKN214</h3>
-                        <p>Intermediate macroeconomics with clear, step-by-step logic.</p>
-                    </div>
-                </div>
-            </section>
-
-            <section id="cta" class="landing-section">
-                <h2>Ready to make EKN easier?</h2>
-                <p class="landing-subtext center">
-                    It takes less than two minutes to submit your request.
-                </p>
                 <div class="landing-cta center">
                     <a href="{{ url_for('form') }}" class="btn-primary">Request notes</a>
                 </div>
             </section>
 
+            <section id="about" class="landing-section">
+                <h2>Meet Miya</h2>
+                <div class="miya-block">
+                    <img src="https://lh3.googleusercontent.com/a/ACg8ocKX0ISIL9QU0ngasYKOtwjVV6kZxTdqWmHsQ7Uqpx3Kr8lY07F0_g=s288-c-no" alt="Miya" class="miya-photo" loading="lazy">
+                    <div class="miya-block-text">
+                        <p>Economics student and tutor. I turned my own summaries into notes that follow the syllabus and get updated with the latest editions.</p>
+                        <a href="https://www.linkedin.com/in/miya-koekemoer-7082a3255/" target="_blank" rel="noopener">Miya on LinkedIn</a>
+                    </div>
+                </div>
+            </section>
+
+            <section id="modules" class="landing-section landing-section-alt">
+                <h2>Modules</h2>
+                <div class="landing-grid">
+                    <div class="landing-card">
+                        <h3>EKN110</h3>
+                        <p>Introductory microeconomics – theory and diagrams made clear.</p>
+                    </div>
+                    <div class="landing-card">
+                        <h3>EKN120</h3>
+                        <p>Introductory macroeconomics – cycles and policy summarised.</p>
+                    </div>
+                    <div class="landing-card">
+                        <h3>EKN214</h3>
+                        <p>Intermediate macroeconomics – step-by-step logic.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="cta" class="landing-section landing-section-alt">
+                <h2>Request notes</h2>
+                <p class="landing-subtext center">Takes about two minutes.</p>
+                <div class="landing-cta center">
+                    <a href="{{ url_for('form') }}" class="btn-primary">Go to form</a>
+                </div>
+            </section>
+
             <section id="contact" class="landing-section landing-section-contact">
-                <h2>Get in touch</h2>
-                <p class="landing-subtext center">Questions? Reach us anytime.</p>
+                <h2>Contact</h2>
                 <div class="contact-links">
                     <a href="tel:+27793688500" class="contact-link">079 368 8500</a>
-                    <a href="mailto:info@miyastudynotes.co.za" class="contact-link">info@miyastudynotes.co.za</a>
+                    <a href="mailto:info@miyastudynotes.co.za" class="contact-link">Email</a>
                     <a href="https://wa.me/27793688500" class="contact-link contact-link-wa" target="_blank" rel="noopener">WhatsApp</a>
                 </div>
             </section>
+
+            <footer class="developer-credit">
+                Built by <a href="https://www.linkedin.com/in/riekert-luies-4a36671a4/" target="_blank" rel="noopener">Riekert Luies</a>
+            </footer>
         </main>
     </div>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
-

@@ -116,7 +116,31 @@ def _email_debug(msg: str) -> None:
     print(f"[EMAIL] {msg}")
 
 
-def _send_smtp_email(to_email: str, subject: str, body_text: str, body_html: str | None = None) -> bool:
+# Support contact for student emails (Reply-To, links) – reduces spam flags
+_SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL", "info@miyastudynotes.co.za")
+_WHATSAPP_URL = "https://wa.me/27793688500"
+
+
+def _student_email_contact_block_html() -> str:
+    """HTML block: WhatsApp button + email link for student emails."""
+    return (
+        f'<p style="margin-top:24px;margin-bottom:8px;font-size:15px;color:#495057;">Need help?</p>'
+        f'<p style="margin:0 0 8px 0;">'
+        f'<a href="{_WHATSAPP_URL}" style="display:inline-block;background:#25D366;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">WhatsApp me</a>'
+        f'</p>'
+        f'<p style="margin:0;font-size:14px;color:#6c757d;">'
+        f'Or email <a href="mailto:{_SUPPORT_EMAIL}" style="color:#667eea;text-decoration:none;">{_SUPPORT_EMAIL}</a>'
+        f'</p>'
+    )
+
+
+def _send_smtp_email(
+    to_email: str,
+    subject: str,
+    body_text: str,
+    body_html: str | None = None,
+    reply_to: str | None = None,
+) -> bool:
     """Send a single email via SMTP (xneelo or any SMTP server)."""
     host = os.environ.get("SMTP_HOST")
     port = int(os.environ.get("SMTP_PORT", "587"))
@@ -134,6 +158,8 @@ def _send_smtp_email(to_email: str, subject: str, body_text: str, body_html: str
         msg["Subject"] = subject
         msg["From"] = from_email
         msg["To"] = to_email
+        if reply_to:
+            msg["Reply-To"] = reply_to
         msg.attach(MIMEText(body_text, "plain"))
         if body_html:
             msg.attach(MIMEText(body_html, "html"))
@@ -318,19 +344,28 @@ def _send_submission_emails_in_background(
 def send_student_confirmation_email(submission_data: dict) -> bool:
     """Send the student a confirmation email that their request was received."""
     to_email = submission_data["email"]
-    name = f"{submission_data['first_name']} {submission_data['last_name']}"
-    subject = "MiyaStudyNotes: We received your request"
-    body = (
+    name = submission_data.get("first_name", "there")
+    subject = "I received your study notes request"
+    body_text = (
         f"Hi {name},\n\n"
-        f"We've received your study notes request.\n\n"
-        f"Module: {submission_data['module']}\n"
-        f"Chapters: {', '.join(submission_data['chapters'])}\n"
-        f"Total: R{submission_data['total_cost']}\n\n"
-        f"We'll review your proof of payment and send you access to the notes via Google Drive once approved.\n\n"
-        f"Need help? WhatsApp us: https://wa.me/27793688500\n\n"
-        f"Thanks,\nMiya Study Notes"
+        f"I received your request for {submission_data['module']} "
+        f"(R{submission_data['total_cost']}). I'll review your payment and share the notes via Google Drive once approved.\n\n"
+        f"WhatsApp: {_WHATSAPP_URL}\n"
+        f"Email: {_SUPPORT_EMAIL}\n\n"
+        f"Miya"
     )
-    return _send_smtp_email(to_email, subject, body)
+    body_html = (
+        f'<div style="font-family:sans-serif;max-width:520px;color:#333;">'
+        f"<p>Hi {name},</p>"
+        f"<p>I received your request for <strong>{submission_data['module']}</strong> (R{submission_data['total_cost']}). "
+        f"I'll review your payment and share the notes via Google Drive once approved.</p>"
+        f"{_student_email_contact_block_html()}"
+        f'<p style="margin-top:24px;font-size:14px;color:#6c757d;">Miya</p>'
+        f"</div>"
+    )
+    return _send_smtp_email(
+        to_email, subject, body_text, body_html=body_html, reply_to=_SUPPORT_EMAIL
+    )
 
 
 def store_file_in_gcs(file_data: bytes, filename: str, submission_id: str, content_type: str) -> str:
@@ -528,37 +563,61 @@ def update_google_sheets_status(submission_id: str, status: str, admin_action: d
 def send_student_approved_email(submission_data: dict, shared_files: list) -> bool:
     """Email student that their request was approved and Drive was shared."""
     to = submission_data["email"]
-    name = submission_data.get("first_name", "Student")
+    name = submission_data.get("first_name", "there")
     module = submission_data["module"]
     links_text = "\n".join(
         f"  - {s['name']}: https://drive.google.com/file/d/{s['id']}/view"
         for s in shared_files
     )
-    subject = f"MiyaStudyNotes: Your {module} study notes are ready"
-    body = (
-        f"Hi {name},\n\n"
-        f"Your {module} study notes have been approved. We've shared the files with you on Google Drive.\n\n"
-        f"Check your Google Drive under \"Shared with me\" for the following:\n\n{links_text}\n\n"
-        f"If you don't see them, check your email for the Drive share notification and mark it as not spam.\n\n"
-        f"Need help? WhatsApp us: https://wa.me/27793688500\n\n"
-        f"Thanks,\nMiya Study Notes"
+    links_html = "".join(
+        f'<li style="margin:6px 0;"><a href="https://drive.google.com/file/d/{s["id"]}/view" style="color:#667eea;">{s["name"]}</a></li>'
+        for s in shared_files
     )
-    return _send_smtp_email(to, subject, body)
+    subject = f"Your {module} notes are ready"
+    body_text = (
+        f"Hi {name},\n\n"
+        f"Your {module} notes are ready. I've shared them with you on Google Drive.\n\n"
+        f"Open Google Drive → Shared with me, or use these links:\n\n{links_text}\n\n"
+        f"WhatsApp: {_WHATSAPP_URL}\nEmail: {_SUPPORT_EMAIL}\n\n"
+        f"Miya"
+    )
+    body_html = (
+        f'<div style="font-family:sans-serif;max-width:520px;color:#333;">'
+        f"<p>Hi {name},</p>"
+        f"<p>Your <strong>{module}</strong> notes are ready. I've shared them with you on Google Drive.</p>"
+        f"<p>Open <strong>Google Drive → Shared with me</strong>, or use these links:</p>"
+        f"<ul style=\"margin:12px 0;padding-left:20px;\">{links_html}</ul>"
+        f"{_student_email_contact_block_html()}"
+        f'<p style="margin-top:24px;font-size:14px;color:#6c757d;">Miya</p>'
+        f"</div>"
+    )
+    return _send_smtp_email(to, subject, body_text, body_html=body_html, reply_to=_SUPPORT_EMAIL)
 
 
 def send_student_denied_email(submission_data: dict) -> bool:
     """Email student that their request was denied."""
     to = submission_data["email"]
-    name = submission_data.get("first_name", "Student")
+    name = submission_data.get("first_name", "there")
     module = submission_data["module"]
-    subject = "MiyaStudyNotes: Request update"
-    body = (
+    subject = "Update on your study notes request"
+    body_text = (
         f"Hi {name},\n\n"
-        f"Unfortunately your request for {module} study materials could not be approved at this time. "
-        f"If you have questions, WhatsApp us: https://wa.me/27793688500 or reply to this email.\n\n"
-        f"Thanks,\nMiya Study Notes"
+        f"I couldn't approve your request for {module} at this time. "
+        f"If you have questions, get in touch:\n\n"
+        f"WhatsApp: {_WHATSAPP_URL}\nEmail: {_SUPPORT_EMAIL}\n\n"
+        f"Miya"
     )
-    return _send_smtp_email(to, subject, body)
+    body_html = (
+        f'<div style="font-family:sans-serif;max-width:520px;color:#333;">'
+        f"<p>Hi {name},</p>"
+        f"<p>I couldn't approve your request for <strong>{module}</strong> at this time.</p>"
+        f"{_student_email_contact_block_html()}"
+        f'<p style="margin-top:24px;font-size:14px;color:#6c757d;">Miya</p>'
+        f"</div>"
+    )
+    return _send_smtp_email(
+        to, subject, body_text, body_html=body_html, reply_to=_SUPPORT_EMAIL
+    )
 
 
 @app.get("/")

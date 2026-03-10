@@ -177,8 +177,12 @@ body {
 
 .landing-subtext {
     font-size: 0.98rem;
-    color: #cbd5ff;
+    color: #495057;
     max-width: 600px;
+}
+
+.landing-hero .landing-subtext {
+    color: #cbd5ff;
 }
 
 .landing-main {
@@ -317,6 +321,61 @@ body {
 .contact-link-wa:hover {
     background: rgba(37, 211, 102, 0.2);
     color: #128c7e;
+}
+
+.miya-block {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.miya-photo {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(102, 126, 234, 0.2);
+}
+
+.miya-block-text {
+    flex: 1;
+    min-width: 200px;
+}
+
+.miya-block-text p {
+    margin: 0 0 8px 0;
+    font-size: 0.98rem;
+    color: #6c757d;
+}
+
+.miya-block-text a {
+    color: #667eea;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.miya-block-text a:hover {
+    text-decoration: underline;
+}
+
+.developer-credit {
+    margin-top: 32px;
+    padding-top: 20px;
+    border-top: 1px solid #e9ecef;
+    font-size: 0.9rem;
+    color: #6c757d;
+    text-align: center;
+}
+
+.developer-credit a {
+    color: #667eea;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.developer-credit a:hover {
+    text-decoration: underline;
 }
 
 .notice-contact {

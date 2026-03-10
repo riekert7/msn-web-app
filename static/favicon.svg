@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Notebook with folded corner -->
+  <path fill="#667eea" d="M6 4h16l6 6v18H6V4z"/>
+  <path fill="#5a67d8" d="M22 4v6h6l-6-6z"/>
+  <!-- Ruled lines -->
+  <line x1="10" y1="14" x2="26" y2="14" stroke="#7c3aed" stroke-width="0.8" opacity="0.9"/>
+  <line x1="10" y1="18" x2="26" y2="18" stroke="#7c3aed" stroke-width="0.8" opacity="0.9"/>
+  <line x1="10" y1="22" x2="22" y2="22" stroke="#7c3aed" stroke-width="0.8" opacity="0.9"/>
+</svg>
