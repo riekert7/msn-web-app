@@ -887,14 +887,42 @@ button[type="submit"]:disabled {
         justify-content: center;
     }
 
+    .banking-details {
+        padding: 12px 14px;
+        margin-top: 14px;
+    }
+
+    .banking-details h4 {
+        margin-bottom: 8px;
+        font-size: 1rem;
+    }
+
+    .bank-rows {
+        gap: 2px;
+    }
+
     .bank-row {
-        grid-template-columns: 1fr;
-        gap: 6px;
+        grid-template-columns: auto 1fr auto;
+        gap: 6px 8px;
+        align-items: center;
+        min-height: auto;
+        padding: 4px 0;
+        font-size: 0.85rem;
+    }
+
+    .bank-label {
+        white-space: nowrap;
+    }
+
+    .bank-value {
+        min-width: 0;
     }
 
     .bank-copy-btn {
-        justify-self: flex-start;
-        margin-top: 2px;
+        justify-self: end;
+        margin-top: 0;
+        padding: 3px 8px;
+        font-size: 0.7rem;
     }
 }
 
