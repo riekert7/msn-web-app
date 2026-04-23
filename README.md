@@ -1,6 +1,6 @@
 # Miya Study Notes — Submission Portal
 
-Web application for students to submit study note orders for [Miya Study Notes](https://miyastudynotes.co.za).
+Web application for students to submit study note orders for Miya Study Notes.
 
 ## What it does
 
@@ -18,14 +18,24 @@ Students fill in a form to order printed study notes for specific modules and ch
 | Backend | Python / Flask |
 | File storage | Google Cloud Storage |
 | Submission log | Google Sheets API |
-| Deployment | Google Cloud Run (Dockerfile included) |
+| Deployment | Google Cloud Run |
 
 ## Running locally
 
+```bash
+pip install -r requirements.txt
 
+export GCS_BUCKET_NAME=<your-bucket>
+export GOOGLE_SHEETS_ID=<your-sheet-id>
+export APPROVAL_SECRET=<random-secret>
+
+python main.py
+```
 
 ## Deployment
 
-Built for **Google Cloud Run**. The  runs gunicorn with a 120-second timeout to accommodate the Drive, Sheets, and email operations that happen on approve/deny.
+Built for **Google Cloud Run**. The `Dockerfile` runs gunicorn with a 120-second timeout to accommodate the Cloud Storage, Sheets, and email operations that happen on approve/deny.
 
-
+```bash
+gcloud run deploy msn-web-app --source .
+```
