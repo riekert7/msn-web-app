@@ -1,8 +1,11 @@
 import os
 import re
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from google.auth import default
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 _FOLDER_IDS = {
     "EKN110": lambda: os.environ.get("EKN110_FOLDER_ID"),
@@ -10,10 +13,16 @@ _FOLDER_IDS = {
     "EKN214": lambda: os.environ.get("EKN214_FOLDER_ID"),
 }
 
+# threading.local() gives each thread its own service client and SSL connection.
+# Sharing a single client across threads causes SSL collisions under concurrency.
+_thread_local = threading.local()
 
-def _get_drive_service():
-    creds, _ = default(scopes=["https://www.googleapis.com/auth/drive"])
-    return build("drive", "v3", credentials=creds)
+
+def _get_service():
+    if not hasattr(_thread_local, "service"):
+        creds, _ = default(scopes=["https://www.googleapis.com/auth/drive"])
+        _thread_local.service = build("drive", "v3", credentials=creds)
+    return _thread_local.service
 
 
 def _chapter_number_exact_in_name(name: str, module: str, chapter_number: str) -> bool:
@@ -22,13 +31,13 @@ def _chapter_number_exact_in_name(name: str, module: str, chapter_number: str) -
     return re.search(pattern, name) is not None
 
 
-def _find_chapter_files(drive, parent_folder_id: str, module: str, chapter_number: str) -> list:
+def _find_chapter_files(parent_folder_id: str, module: str, chapter_number: str) -> list:
     """Return Drive file dicts matching '<MODULE> - Chapter <N>' (exact chapter number)."""
     if not parent_folder_id:
         return []
     pattern = f"{module} - Chapter {chapter_number}"
     q = f"parents in '{parent_folder_id}' and name contains '{pattern}' and trashed=false"
-    res = drive.files().list(
+    res = _get_service().files().list(
         q=q,
         fields="files(id, name)",
         includeItemsFromAllDrives=True,
@@ -38,38 +47,60 @@ def _find_chapter_files(drive, parent_folder_id: str, module: str, chapter_numbe
     return [f for f in files if _chapter_number_exact_in_name(f.get("name", ""), module, chapter_number)]
 
 
-def share_study_materials(email: str, module: str, chapters: list) -> list:
-    """Share the requested chapter files from Drive with the student. Returns shared file info."""
-    from googleapiclient.errors import HttpError
+def _grant_permission(file_id: str, file_name: str, chapter: str, email: str) -> dict | None:
+    """Grant reader access to one file. Each call uses the thread-local service client."""
+    try:
+        _get_service().permissions().create(
+            fileId=file_id,
+            body={"role": "reader", "type": "user", "emailAddress": email},
+            sendNotificationEmail=False,
+            supportsAllDrives=True,
+        ).execute(num_retries=3)
+        print(f"[DRIVE] Shared {file_name} (id={file_id}) with {email}")
+        return {"id": file_id, "name": file_name, "chapter": chapter}
+    except HttpError as e:
+        print(f"[DRIVE] Permission error for {file_id}: {e}")
+        return None
 
+
+def share_study_materials(email: str, module: str, chapters: list) -> list:
+    """Share the requested chapter files from Drive with the student.
+
+    File discovery is sequential; permission grants run concurrently —
+    each worker thread gets its own Drive client via threading.local().
+    """
     folder_id = _FOLDER_IDS.get(module, lambda: None)()
     if not folder_id:
         raise ValueError(f"No Drive folder configured for module: {module}")
 
     print(f"[DRIVE] Sharing {module} chapters={chapters} with {email}")
-    drive = _get_drive_service()
-    shared = []
 
+    # Discover all files first (sequential — one list call per chapter)
+    file_chapter_pairs = []
     for chapter in chapters:
         try:
             num = chapter.split("-")[1]
-            files = _find_chapter_files(drive, folder_id, module, num)
+            files = _find_chapter_files(folder_id, module, num)
             if not files:
                 print(f"[DRIVE] No files found for {module} chapter {num}")
-                continue
-            for f in files:
-                try:
-                    drive.permissions().create(
-                        fileId=f["id"],
-                        body={"role": "reader", "type": "user", "emailAddress": email},
-                        sendNotificationEmail=False,
-                        supportsAllDrives=True,
-                    ).execute(num_retries=3)
-                    print(f"[DRIVE] Shared {f['name']} (id={f['id']}) with {email}")
-                    shared.append({"id": f["id"], "name": f["name"], "chapter": num})
-                except HttpError as e:
-                    print(f"[DRIVE] Permission error for {f['id']}: {e}")
+            else:
+                file_chapter_pairs.extend((f, num) for f in files)
         except Exception as e:
-            print(f"[DRIVE] Error sharing chapter {chapter}: {e}")
+            print(f"[DRIVE] Error finding files for chapter {chapter}: {e}")
+
+    if not file_chapter_pairs:
+        return []
+
+    # Grant all permissions concurrently — one thread per file
+    shared = []
+    with ThreadPoolExecutor(max_workers=min(len(file_chapter_pairs), 10)) as pool:
+        futures = {
+            pool.submit(_grant_permission, f["id"], f["name"], num, email): f["name"]
+            for f, num in file_chapter_pairs
+        }
+        for future in as_completed(futures):
+            result = future.result()
+            if result:
+                shared.append(result)
 
     return shared

@@ -1,8 +1,18 @@
 import os
+import threading
 from datetime import datetime, timezone
 
 from google.auth import default
 from googleapiclient.discovery import build
+
+_thread_local = threading.local()
+
+
+def _get_service():
+    if not hasattr(_thread_local, "service"):
+        creds, _ = default(scopes=["https://www.googleapis.com/auth/spreadsheets"])
+        _thread_local.service = build("sheets", "v4", credentials=creds)
+    return _thread_local.service
 
 
 def log_to_google_sheets(submission_data: dict) -> bool:
@@ -12,8 +22,6 @@ def log_to_google_sheets(submission_data: dict) -> bool:
         print("[SHEETS] GOOGLE_SHEETS_ID not configured, skipping")
         return False
     try:
-        creds, _ = default(scopes=["https://www.googleapis.com/auth/spreadsheets"])
-        service = build("sheets", "v4", credentials=creds)
         ts = datetime.fromisoformat(submission_data["timestamp"].replace("Z", "+00:00"))
         row = [
             ts.isoformat(),
@@ -27,10 +35,10 @@ def log_to_google_sheets(submission_data: dict) -> bool:
             submission_data["file_name"],
             f"{submission_data['file_size']}MB",
             submission_data["status"],
-            "",  # approval date
-            "",  # admin notes
+            "",
+            "",
         ]
-        service.spreadsheets().values().append(
+        _get_service().spreadsheets().values().append(
             spreadsheetId=sheets_id,
             range="Submissions!A:M",
             valueInputOption="RAW",
@@ -51,26 +59,22 @@ def update_google_sheets_status(submission_id: str, status: str, admin_action: d
         print("[SHEETS] GOOGLE_SHEETS_ID not configured, skipping status update")
         return False
     try:
-        creds, _ = default(scopes=["https://www.googleapis.com/auth/spreadsheets"])
-        service = build("sheets", "v4", credentials=creds)
-
-        result = service.spreadsheets().values().get(
+        result = _get_service().spreadsheets().values().get(
             spreadsheetId=sheets_id, range="Submissions!A:M"
         ).execute()
         values = result.get("values", [])
+        print(f"[SHEETS] update_google_sheets_status: {len(values)} rows found for {submission_id}")
 
-        row_index = None
-        for i, row in enumerate(values):
-            if len(row) > 1 and row[1] == submission_id:
-                row_index = i + 1
-                break
-
+        row_index = next(
+            (i + 1 for i, row in enumerate(values) if len(row) > 1 and row[1] == submission_id),
+            None,
+        )
         if row_index is None:
             print(f"[SHEETS] submission_id={submission_id} not found; cannot update")
             return False
 
         now = datetime.now(timezone.utc).isoformat()
-        service.spreadsheets().values().batchUpdate(
+        _get_service().spreadsheets().values().batchUpdate(
             spreadsheetId=sheets_id,
             body={
                 "valueInputOption": "RAW",
@@ -80,7 +84,7 @@ def update_google_sheets_status(submission_id: str, status: str, admin_action: d
                 ],
             },
         ).execute()
-        print(f"[SHEETS] Updated {submission_id} → {status} at row {row_index}")
+        print(f"[SHEETS] Updated {submission_id} -> {status} at row {row_index}")
         return True
     except Exception as e:
         print(f"[SHEETS] Status update failed for {submission_id}: {e}")
