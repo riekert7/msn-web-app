@@ -7,12 +7,12 @@ from datetime import datetime, timezone
 
 from flask import Flask, jsonify, render_template, request
 
-from auth import verify_approval_token
 from drive import share_study_materials
 from email_utils import (
     send_student_approved_email,
     send_student_denied_email,
     send_submission_emails_in_background,
+    verify_approval_token,
 )
 from sheets import log_to_google_sheets, update_google_sheets_status
 from storage import (

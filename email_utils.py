@@ -1,3 +1,5 @@
+import hashlib
+import hmac
 import os
 import smtplib
 import ssl
@@ -6,7 +8,19 @@ from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-from auth import approval_token
+
+# ---------------------------------------------------------------------------
+# Token helpers (here to avoid a circular import with main.py)
+# ---------------------------------------------------------------------------
+
+def approval_token(submission_id: str) -> str:
+    """HMAC-SHA256 token for approve/deny links — prevents forgery."""
+    secret = os.environ.get("APPROVAL_SECRET", "").encode()
+    return hmac.new(secret, submission_id.encode(), hashlib.sha256).hexdigest()
+
+
+def verify_approval_token(submission_id: str, token: str) -> bool:
+    return bool(token) and hmac.compare_digest(approval_token(submission_id), token)
 
 _SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL", "info@miyastudynotes.co.za")
 _WHATSAPP_URL = "https://wa.me/27793688500"

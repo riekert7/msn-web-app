@@ -1,22 +1,22 @@
 .PHONY: dev gunicorn test lint security
 
-# Flask dev server — auto-reloads on file changes, loads .env automatically
+# Flask dev server — auto-reloads, loads .env automatically (needs python-dotenv in venv)
 dev:
 	flask --app main run --debug --port 5000
 
-# Gunicorn locally — closest to what runs in Cloud Run (use this before pushing)
+# Gunicorn locally — matches Cloud Run (use this before pushing)
 gunicorn:
 	gunicorn -b 0.0.0.0:8080 --timeout 120 --reload main:app
 
-# Run the test suite
+# Run tests (config in pyproject.toml)
 test:
-	pytest tests/ -v
+	pytest
 
-# Lint (warning only — mirrors the PR check)
+# Lint — warning only (config in pyproject.toml)
 lint:
 	ruff check .
 
-# Security scan (mirrors the PR gate)
+# Security scan — mirrors the PR gate (config in pyproject.toml)
 security:
-	bandit -r . -ll --exclude .venv,tests
-	pip-audit
+	bandit -r .
+	pip-audit -r requirements.txt
