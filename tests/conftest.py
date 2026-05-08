@@ -1,11 +1,10 @@
 """Shared fixtures for all tests."""
-import json
+import hashlib
+import hmac
 import os
-import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-
-# Minimal env vars so main.py imports without crashing
+# Minimal env vars so modules import without real GCP credentials
 os.environ.setdefault("GCS_BUCKET_NAME", "test-bucket")
 os.environ.setdefault("APPROVAL_SECRET", "test-secret")
 os.environ.setdefault("ADMIN_EMAIL", "admin@example.com")
@@ -20,12 +19,12 @@ os.environ.setdefault("EKN110_FOLDER_ID", "folder-ekn110")
 os.environ.setdefault("EKN120_FOLDER_ID", "folder-ekn120")
 os.environ.setdefault("EKN214_FOLDER_ID", "folder-ekn214")
 
-
-# Patch storage_client at import time so main.py doesn't need real GCP credentials
+# Patch GCS client before any module imports it
 _storage_patcher = patch("google.cloud.storage.Client")
 _storage_patcher.start()
 
-import main  # noqa: E402  (must come after env vars + patch)
+import pytest  # noqa: E402
+import main    # noqa: E402
 
 
 @pytest.fixture
@@ -41,7 +40,6 @@ def client(app):
 
 @pytest.fixture
 def pending_submission():
-    """A minimal pending submission dict (matches metadata.json structure)."""
     return {
         "submission_id": "test-sub-001",
         "first_name": "Jane",
@@ -61,7 +59,5 @@ def pending_submission():
 
 
 def make_approval_token(submission_id: str) -> str:
-    import hmac as _hmac
-    import hashlib
     secret = os.environ["APPROVAL_SECRET"].encode()
-    return _hmac.new(secret, submission_id.encode(), hashlib.sha256).hexdigest()
+    return hmac.new(secret, submission_id.encode(), hashlib.sha256).hexdigest()

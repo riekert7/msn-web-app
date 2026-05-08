@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(py -3.12 --version)",
+      "Bash(py -3.11 --version)",
+      "Bash(py -3.12 -m pytest tests/test_approve.py tests/test_deny.py -v)",
+      "Bash(py -3.12 -m pip install pytest pytest-flask flask google-cloud-storage google-auth google-api-python-client werkzeug --quiet)",
+      "WebSearch"
+    ]
+  }
+}
