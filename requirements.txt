@@ -5,4 +5,8 @@ google-auth==2.*
 google-api-python-client==2.*
 requests==2.*
 Werkzeug==3.*
+python-dotenv==1.*
+
+# Dev / test dependencies (not needed in production Docker image)
+# pip install pytest pytest-flask
 

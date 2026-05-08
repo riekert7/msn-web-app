@@ -1,3 +1,4 @@
+import atexit
 import hmac
 import hashlib
 import os
@@ -7,6 +8,7 @@ import smtplib
 import ssl
 import threading
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
@@ -19,6 +21,16 @@ from google.auth import default
 from googleapiclient.discovery import build
 from werkzeug.utils import secure_filename
 
+# Load .env.dev when running locally (FLASK_ENV=development).
+# In production (Cloud Run) env vars are injected by the runtime — dotenv is a no-op there.
+try:
+    from dotenv import load_dotenv
+    if os.environ.get("FLASK_ENV") == "development":
+        load_dotenv(".env.dev", override=False)
+        print("[DEV] Loaded .env.dev")
+except ImportError:
+    pass  # python-dotenv not installed in prod image — that's fine
+
 
 app = Flask(
     __name__,
@@ -29,6 +41,11 @@ app = Flask(
 # Initialize Google Cloud Storage
 storage_client = storage.Client()
 bucket_name = os.environ.get("GCS_BUCKET_NAME", "miyastudynotes-temp")
+
+# Thread pool for background work (Drive API, Sheets, email after approve/deny).
+# Cloud Run sends SIGTERM on scale-down; atexit ensures in-flight tasks drain.
+_executor = ThreadPoolExecutor(max_workers=4)
+atexit.register(_executor.shutdown, wait=True)
 
 # Allowed file types and size limit
 ALLOWED_EXTENSIONS = {"pdf", "jpg", "jpeg", "png"}
@@ -479,7 +496,7 @@ def share_study_materials(email: str, module: str, chapters: list) -> list:
             else:
                 print(
                     f"[DRIVE] Found {len(files)} files for module={module} "
-                    f"chapter={num}: {[f'{x.get('name')} ({x.get('id')})' for x in files]}"
+                    f"chapter={num}: {[x.get('name', '') + ' (' + x.get('id', '') + ')' for x in files]}"
                 )
             for f in files:
                 perm = {"role": "reader", "type": "user", "emailAddress": email}
@@ -538,17 +555,16 @@ def update_google_sheets_status(submission_id: str, status: str, admin_action: d
             print(f"[SHEETS] submission_id={submission_id} not found in sheet; cannot update")
             return False
         now = datetime.now(timezone.utc).isoformat()
-        service.spreadsheets().values().update(
+        # One batchUpdate call instead of two separate writes.
+        service.spreadsheets().values().batchUpdate(
             spreadsheetId=sheets_id,
-            range=f"Submissions!K{row_index}",
-            valueInputOption="RAW",
-            body={"values": [[status]]},
-        ).execute()
-        service.spreadsheets().values().update(
-            spreadsheetId=sheets_id,
-            range=f"Submissions!L{row_index}",
-            valueInputOption="RAW",
-            body={"values": [[now]]},
+            body={
+                "valueInputOption": "RAW",
+                "data": [
+                    {"range": f"Submissions!K{row_index}", "values": [[status]]},
+                    {"range": f"Submissions!L{row_index}", "values": [[now]]},
+                ],
+            },
         ).execute()
         print(
             f"[SHEETS] Updated status for submission_id={submission_id} to {status} "
@@ -738,17 +754,13 @@ def submit():
         log_to_google_sheets(submission_data)
 
         # Send admin + student emails in background so we return the response immediately
-        thread = threading.Thread(
-            target=_send_submission_emails_in_background,
-            args=(
-                submission_data,
-                file_data,
-                file.filename or "proof",
-                file.content_type or "application/octet-stream",
-            ),
-            daemon=True,
+        _executor.submit(
+            _send_submission_emails_in_background,
+            submission_data,
+            file_data,
+            file.filename or "proof",
+            file.content_type or "application/octet-stream",
         )
-        thread.start()
         print(f"[EMAIL] Queued background email send for {submission_id}")
 
         # Return success response
@@ -784,9 +796,25 @@ def submit():
         )
 
 
+def _approve_background(submission_id: str, data: dict) -> None:
+    """Background work for approval: Drive sharing → GCS update → Sheets → student email."""
+    try:
+        shared = share_study_materials(data["email"], data["module"], data["chapters"])
+        update_submission_status(submission_id, "approved", {"shared_files": shared})
+        update_google_sheets_status(submission_id, "approved")
+        send_student_approved_email(data, shared)
+    except Exception as e:
+        print(f"[APPROVE] Background task error for {submission_id}: {e}")
+
+
 @app.get("/approve/<submission_id>")
 def approve(submission_id: str):
-    """Handle approval from admin email link. Requires ?token= (HMAC of submission_id)."""
+    """Handle approval from admin email link. Requires ?token= (HMAC of submission_id).
+
+    GCS status is written synchronously (prevents double-processing on double-click).
+    Drive sharing, Sheets update, and student email run in the background thread pool
+    so the admin sees the success page immediately.
+    """
     token = request.args.get("token")
     if not _verify_approval_token(submission_id, token or ""):
         return (
@@ -802,17 +830,16 @@ def approve(submission_id: str):
                 200,
                 {"Content-Type": "text/html"},
             )
-        shared = share_study_materials(data["email"], data["module"], data["chapters"])
-        update_submission_status(submission_id, "approved", {"shared_files": shared})
-        update_google_sheets_status(submission_id, "approved", {"shared_files": shared})
-        send_student_approved_email(data, shared)
+        # Write status immediately — prevents race condition if admin double-clicks.
+        update_submission_status(submission_id, "approved")
+        _executor.submit(_approve_background, submission_id, data)
         return (
             render_template("approved.html"),
             200,
             {"Content-Type": "text/html"},
         )
     except Exception as e:
-        print(f"Approval error: {e}")
+        print(f"[APPROVE] Error for {submission_id}: {e}")
         return (
             render_template("action_message.html", title="Error", message=f"Something went wrong: {e}"),
             500,
@@ -820,9 +847,21 @@ def approve(submission_id: str):
         )
 
 
+def _deny_background(submission_id: str, data: dict) -> None:
+    """Background work for denial: Sheets update → student email."""
+    try:
+        update_google_sheets_status(submission_id, "denied")
+        send_student_denied_email(data)
+    except Exception as e:
+        print(f"[DENY] Background task error for {submission_id}: {e}")
+
+
 @app.get("/deny/<submission_id>")
 def deny(submission_id: str):
-    """Handle denial from admin email link. Requires ?token= (HMAC of submission_id)."""
+    """Handle denial from admin email link. Requires ?token= (HMAC of submission_id).
+
+    GCS status is written synchronously; Sheets update and student email run in background.
+    """
     token = request.args.get("token")
     if not _verify_approval_token(submission_id, token or ""):
         return (
@@ -838,16 +877,15 @@ def deny(submission_id: str):
                 200,
                 {"Content-Type": "text/html"},
             )
-        update_submission_status(submission_id, "denied", {})
-        update_google_sheets_status(submission_id, "denied")
-        send_student_denied_email(data)
+        update_submission_status(submission_id, "denied")
+        _executor.submit(_deny_background, submission_id, data)
         return (
             render_template("denied.html"),
             200,
             {"Content-Type": "text/html"},
         )
     except Exception as e:
-        print(f"Deny error: {e}")
+        print(f"[DENY] Error for {submission_id}: {e}")
         return (
             render_template("action_message.html", title="Error", message=f"Something went wrong: {e}"),
             500,
