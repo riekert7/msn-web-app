@@ -1,9 +1,12 @@
 import json
+import logging
 import os
 from datetime import datetime, timezone
 
 from google.cloud import storage
 from werkzeug.utils import secure_filename
+
+logger = logging.getLogger(__name__)
 
 storage_client = storage.Client()
 bucket_name = os.environ.get("GCS_BUCKET_NAME", "miyastudynotes-temp")
@@ -22,10 +25,10 @@ def store_file_in_gcs(file_data: bytes, filename: str, submission_id: str, conte
             "uploaded_at": datetime.now(timezone.utc).isoformat(),
         }
         blob.upload_from_string(file_data, content_type=content_type)
-        print(f"[GCS] Uploaded {path}")
+        logger.info("Uploaded %s", path)
         return path
     except Exception as e:
-        print(f"[GCS] Upload failed: {e}")
+        logger.error("Upload failed: %s", e)
         raise
 
 
@@ -36,10 +39,10 @@ def store_submission_metadata(submission_data: dict) -> str:
         path = f"submissions/{submission_data['submission_id']}/metadata.json"
         blob = bucket.blob(path)
         blob.upload_from_string(json.dumps(submission_data, indent=2), content_type="application/json")
-        print("[GCS] Metadata stored")
+        logger.info("Metadata stored")
         return path
     except Exception as e:
-        print(f"[GCS] Metadata store failed: {e}")
+        logger.error("Metadata store failed: %s", e)
         raise
 
 

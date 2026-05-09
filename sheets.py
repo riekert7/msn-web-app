@@ -1,9 +1,12 @@
+import logging
 import os
 import threading
 from datetime import datetime, timezone
 
 from google.auth import default
 from googleapiclient.discovery import build
+
+logger = logging.getLogger(__name__)
 
 _thread_local = threading.local()
 
@@ -19,7 +22,7 @@ def log_to_google_sheets(submission_data: dict) -> bool:
     """Append a new submission row to the Submissions sheet."""
     sheets_id = os.environ.get("GOOGLE_SHEETS_ID")
     if not sheets_id:
-        print("[SHEETS] GOOGLE_SHEETS_ID not configured, skipping")
+        logger.warning("GOOGLE_SHEETS_ID not configured, skipping")
         return False
     try:
         ts = datetime.fromisoformat(submission_data["timestamp"].replace("Z", "+00:00"))
@@ -45,10 +48,10 @@ def log_to_google_sheets(submission_data: dict) -> bool:
             insertDataOption="INSERT_ROWS",
             body={"values": [row]},
         ).execute()
-        print("[SHEETS] Submission logged")
+        logger.info("Submission logged")
         return True
     except Exception as e:
-        print(f"[SHEETS] Log failed: {e}")
+        logger.error("Log failed: %s", e)
         return False
 
 
@@ -56,21 +59,21 @@ def update_google_sheets_status(submission_id: str, status: str, admin_action: d
     """Update status (col K) and approval date (col L) for a submission row."""
     sheets_id = os.environ.get("GOOGLE_SHEETS_ID")
     if not sheets_id:
-        print("[SHEETS] GOOGLE_SHEETS_ID not configured, skipping status update")
+        logger.warning("GOOGLE_SHEETS_ID not configured, skipping status update")
         return False
     try:
         result = _get_service().spreadsheets().values().get(
             spreadsheetId=sheets_id, range="Submissions!A:M"
         ).execute()
         values = result.get("values", [])
-        print(f"[SHEETS] update_google_sheets_status: {len(values)} rows found for {submission_id}")
+        logger.info("update_google_sheets_status: %d rows found for %s", len(values), submission_id)
 
         row_index = next(
             (i + 1 for i, row in enumerate(values) if len(row) > 1 and row[1] == submission_id),
             None,
         )
         if row_index is None:
-            print(f"[SHEETS] submission_id={submission_id} not found; cannot update")
+            logger.error("submission_id=%s not found; cannot update", submission_id)
             return False
 
         now = datetime.now(timezone.utc).isoformat()
@@ -84,8 +87,8 @@ def update_google_sheets_status(submission_id: str, status: str, admin_action: d
                 ],
             },
         ).execute()
-        print(f"[SHEETS] Updated {submission_id} -> {status} at row {row_index}")
+        logger.info("Updated %s -> %s at row %d", submission_id, status, row_index)
         return True
     except Exception as e:
-        print(f"[SHEETS] Status update failed for {submission_id}: {e}")
+        logger.error("Status update failed for %s: %s", submission_id, e)
         return False

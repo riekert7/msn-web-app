@@ -5,3 +5,4 @@ google-auth==2.52.0
 google-api-python-client==2.196.0
 requests==2.32.3
 Werkzeug==3.1.8
+sentry-sdk[flask]==2.25.1

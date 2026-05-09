@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 import threading
@@ -6,6 +7,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from google.auth import default
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+
+logger = logging.getLogger(__name__)
 
 _FOLDER_IDS = {
     "EKN110": lambda: os.environ.get("EKN110_FOLDER_ID"),
@@ -56,10 +59,10 @@ def _grant_permission(file_id: str, file_name: str, chapter: str, email: str) ->
             sendNotificationEmail=False,
             supportsAllDrives=True,
         ).execute(num_retries=3)
-        print(f"[DRIVE] Shared {file_name} (id={file_id}) with {email}")
+        logger.info("Shared %s (id=%s) with %s", file_name, file_id, email)
         return {"id": file_id, "name": file_name, "chapter": chapter}
     except HttpError as e:
-        print(f"[DRIVE] Permission error for {file_id}: {e}")
+        logger.error("Permission error for %s: %s", file_id, e)
         return None
 
 
@@ -73,7 +76,7 @@ def share_study_materials(email: str, module: str, chapters: list) -> list:
     if not folder_id:
         raise ValueError(f"No Drive folder configured for module: {module}")
 
-    print(f"[DRIVE] Sharing {module} chapters={chapters} with {email}")
+    logger.info("Sharing %s chapters=%s with %s", module, chapters, email)
 
     # Discover all files first (sequential — one list call per chapter)
     file_chapter_pairs = []
@@ -82,11 +85,11 @@ def share_study_materials(email: str, module: str, chapters: list) -> list:
             num = chapter.split("-")[1]
             files = _find_chapter_files(folder_id, module, num)
             if not files:
-                print(f"[DRIVE] No files found for {module} chapter {num}")
+                logger.warning("No files found for %s chapter %s", module, num)
             else:
                 file_chapter_pairs.extend((f, num) for f in files)
         except Exception as e:
-            print(f"[DRIVE] Error finding files for chapter {chapter}: {e}")
+            logger.error("Error finding files for chapter %s: %s", chapter, e)
 
     if not file_chapter_pairs:
         return []

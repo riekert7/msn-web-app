@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import logging
 import os
 import smtplib
 import ssl
@@ -7,6 +8,10 @@ from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+
+import sentry_sdk
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -24,10 +29,6 @@ def verify_approval_token(submission_id: str, token: str) -> bool:
 
 _SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL", "info@miyastudynotes.co.za")
 _WHATSAPP_URL = "https://wa.me/27793688500"
-
-
-def _log(msg: str) -> None:
-    print(f"[EMAIL] {msg}")
 
 
 def _phone_to_whatsapp(phone: str, country_code: str = "27") -> str:
@@ -69,7 +70,7 @@ def _smtp_config() -> tuple:
 def _send_email(to: str, subject: str, text: str, html: str | None = None, reply_to: str | None = None) -> bool:
     host, port, username, password, from_email = _smtp_config()
     if not all((host, username, password, from_email)):
-        _log("SMTP not configured — set SMTP_HOST, SMTP_USERNAME, SMTP_PASSWORD, FROM_EMAIL in .env")
+        logger.warning("SMTP not configured — set SMTP_HOST, SMTP_USERNAME, SMTP_PASSWORD, FROM_EMAIL in .env")
         return False
     try:
         msg = MIMEMultipart("alternative")
@@ -86,10 +87,10 @@ def _send_email(to: str, subject: str, text: str, html: str | None = None, reply
             server.starttls(context=ctx)
             server.login(username, password)
             server.sendmail(from_email, [to], msg.as_string())
-        _log(f"Sent to {to}: {subject[:60]}")
+        logger.info("Sent to %s: %s", to, subject[:60])
         return True
     except Exception as e:
-        _log(f"Failed to {to}: {e}")
+        logger.error("Failed to %s: %s", to, e)
         return False
 
 
@@ -104,7 +105,7 @@ def _send_email_with_attachment(
 ) -> bool:
     host, port, username, password, from_email = _smtp_config()
     if not all((host, username, password, from_email)):
-        _log("SMTP not configured (attachment email)")
+        logger.warning("SMTP not configured (attachment email)")
         return False
     try:
         msg = MIMEMultipart("mixed")
@@ -126,10 +127,10 @@ def _send_email_with_attachment(
             server.starttls(context=ctx)
             server.login(username, password)
             server.sendmail(from_email, [to], msg.as_string())
-        _log(f"Sent (attachment) to {to}: {subject[:60]}")
+        logger.info("Sent (attachment) to %s: %s", to, subject[:60])
         return True
     except Exception as e:
-        _log(f"Failed (attachment) to {to}: {e}")
+        logger.error("Failed (attachment) to %s: %s", to, e)
         return False
 
 
@@ -142,10 +143,10 @@ def send_admin_new_submission_email(submission_data: dict, file_data: bytes, fil
     admin_email = os.environ.get("ADMIN_EMAIL")
     base_url = (os.environ.get("BASE_URL") or "http://localhost:5000").rstrip("/")
     if not admin_email:
-        _log("ADMIN_EMAIL not set — skipping admin notification")
+        logger.warning("ADMIN_EMAIL not set — skipping admin notification")
         return False
     if not os.environ.get("APPROVAL_SECRET"):
-        _log("APPROVAL_SECRET not set — approve/deny links will not work")
+        logger.warning("APPROVAL_SECRET not set — approve/deny links will not work")
         return False
 
     sid = submission_data["submission_id"]
@@ -271,11 +272,12 @@ def send_student_denied_email(submission_data: dict) -> bool:
 def send_submission_emails_in_background(submission_data: dict, file_data: bytes, filename: str, content_type: str) -> None:
     """Run in thread pool: admin email with attachment + student confirmation."""
     sid = submission_data.get("submission_id", "?")
-    _log(f"Background email task started for {sid}")
+    logger.info("Background email task started for %s", sid)
     try:
         ok_admin = send_admin_new_submission_email(submission_data, file_data, filename, content_type or "application/octet-stream")
-        _log(f"Admin email: {'OK' if ok_admin else 'FAILED'}")
+        logger.info("Admin email: %s", "OK" if ok_admin else "FAILED")
         ok_student = send_student_confirmation_email(submission_data)
-        _log(f"Student confirmation: {'OK' if ok_student else 'FAILED'}")
+        logger.info("Student confirmation: %s", "OK" if ok_student else "FAILED")
     except Exception as e:
-        _log(f"Background email error for {sid}: {e}")
+        sentry_sdk.capture_exception(e)
+        logger.error("Background email error for %s: %s", sid, e)
