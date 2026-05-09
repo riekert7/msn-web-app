@@ -225,3 +225,11 @@ def deny(submission_id: str):
 @app.get("/healthz")
 def healthz():
     return jsonify({"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat(), "service": "webapp"})
+
+
+# ---------------------------------------------------------------------------
+# Sentry
+# ---------------------------------------------------------------------------
+@app.get("/debug-sentry")
+def debug_sentry():
+    1 / 0
