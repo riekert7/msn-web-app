@@ -250,14 +250,26 @@ def deny(submission_id: str):
 
 @app.get("/view-payment/<submission_id>")
 def view_payment(submission_id: str):
+    """Token-protected view used in admin notification emails."""
     token = request.args.get("token")
     if not verify_approval_token(submission_id, token or ""):
         return "Invalid or expired link", 403
+    return _serve_payment_file(submission_id)
+
+
+@app.get("/admin/view-payment/<submission_id>")
+@require_admin
+def admin_view_payment(submission_id: str):
+    """Session-protected view used from the admin dashboard."""
+    return _serve_payment_file(submission_id)
+
+
+def _serve_payment_file(submission_id: str) -> Response:
     try:
         data = get_submission_data(submission_id)
         gcs_path = data.get("gcs_file_path")
         if not gcs_path:
-            return "File not found", 404
+            return "No proof of payment on file", 404
         file_data, content_type = get_file_from_gcs(gcs_path)
         filename = data.get("file_name", "proof")
         return Response(
