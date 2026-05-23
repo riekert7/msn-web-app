@@ -242,13 +242,26 @@
   }
 
   function buildRow(s) {
-    const isApproved = (s.status || '').toLowerCase() === 'approved';
-    const reshareClass = isApproved ? 'btn-reshare-done' : 'btn-reshare';
-    const reshareTitle = isApproved ? 'Reshare (already approved)' : 'Share &amp; email student';
+    const status = (s.status || '').toLowerCase();
+    const isPending  = status === 'pending' || status === '' || status === 'unknown';
+    const isApproved = status === 'approved';
     const dateStr = s.timestamp ? s.timestamp.slice(0, 10) : '—';
     const badgeClass = statusClass(s.status);
     const safeId = (s.submission_id || '').replace(/[^a-zA-Z0-9-]/g, '');
-    const safeName = (s.name || '').replace(/"/g, '&quot;');
+    const safeName = (s.name || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+    let actionButtons;
+    if (isPending) {
+      actionButtons =
+        `<button class="btn btn-approve" onclick="approve(this,'${safeId}')" title="Share notes &amp; email student">Approve</button>` +
+        `<button class="btn btn-deny"    onclick="deny(this,'${safeId}')"    title="Deny request">Deny</button>`;
+    } else {
+      const reshareClass = isApproved ? 'btn-reshare-done' : 'btn-reshare';
+      actionButtons =
+        `<button class="btn ${reshareClass}" onclick="approve(this,'${safeId}')" title="Reshare">Reshare</button>`;
+    }
+    actionButtons +=
+      `<button class="btn btn-pop" onclick="openPop('${safeId}','${safeName}')" title="Preview proof of payment">View POP</button>`;
 
     return `<tr id="row-${safeId}">
       <td class="col-date" data-label="Date">${dateStr}</td>
@@ -264,19 +277,7 @@
         <span class="${badgeClass} status-badge">${s.status || 'unknown'}</span>
       </td>
       <td class="col-actions" data-label="Actions">
-        <div class="actions-cell">
-          <button
-            class="btn ${reshareClass}"
-            id="reshare-btn-${safeId}"
-            onclick="reshare(this, '${safeId}')"
-            title="${reshareTitle}"
-          >Reshare</button>
-          <button
-            class="btn btn-pop"
-            onclick="openPop('${safeId}', '${safeName.replace(/'/g, "\\'")}')"
-            title="Preview proof of payment"
-          >View POP</button>
-        </div>
+        <div class="actions-cell" id="actions-${safeId}">${actionButtons}</div>
       </td>
     </tr>`;
   }
@@ -419,8 +420,8 @@
     });
   });
 
-  // ── Reshare (AJAX) ──
-  async function reshare(btn, submissionId) {
+  // ── Approve / Reshare (AJAX) ──
+  async function approve(btn, submissionId) {
     const original = btn.textContent;
     btn.disabled = true;
     btn.textContent = 'Sharing…';
@@ -432,16 +433,51 @@
           badge.className = 'status-badge status-approved';
           badge.textContent = 'approved';
         });
-        btn.disabled = false;
-        btn.className = 'btn btn-reshare-done';
-        btn.textContent = 'Reshare';
-        // update in-memory data so re-renders reflect the change
+        const actionsCell = document.getElementById(`actions-${submissionId}`);
+        if (actionsCell) {
+          actionsCell.innerHTML =
+            `<button class="btn btn-reshare-done" onclick="approve(this,'${submissionId}')" title="Reshare">Reshare</button>` +
+            `<button class="btn btn-pop" onclick="openPop('${submissionId}','')" title="Preview proof of payment">View POP</button>`;
+        }
         const row = allRows.find(r => r.submission_id === submissionId);
         if (row) row.status = 'approved';
       } else {
         btn.disabled = false;
         btn.textContent = original;
-        alert(`Reshare failed: ${data.error || 'unknown error'}`);
+        alert(`Failed: ${data.error || 'unknown error'}`);
+      }
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = original;
+      alert(`Network error: ${e.message}`);
+    }
+  }
+
+  // ── Deny (AJAX) ──
+  async function deny(btn, submissionId) {
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Denying…';
+    try {
+      const res = await fetch(`/admin/deny/${submissionId}`, { method: 'POST' });
+      const data = await res.json();
+      if (data.ok) {
+        document.querySelectorAll(`#badge-${submissionId}`).forEach(badge => {
+          badge.className = 'status-badge status-denied';
+          badge.textContent = 'denied';
+        });
+        const actionsCell = document.getElementById(`actions-${submissionId}`);
+        if (actionsCell) {
+          actionsCell.innerHTML =
+            `<button class="btn btn-reshare" onclick="approve(this,'${submissionId}')" title="Reshare">Reshare</button>` +
+            `<button class="btn btn-pop" onclick="openPop('${submissionId}','')" title="Preview proof of payment">View POP</button>`;
+        }
+        const row = allRows.find(r => r.submission_id === submissionId);
+        if (row) row.status = 'denied';
+      } else {
+        btn.disabled = false;
+        btn.textContent = original;
+        alert(`Deny failed: ${data.error || 'unknown error'}`);
       }
     } catch (e) {
       btn.disabled = false;

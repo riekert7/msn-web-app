@@ -154,13 +154,7 @@ def submit():
         store_submission_metadata(submission_data)
         log_to_google_sheets(submission_data)
 
-        _executor.submit(
-            send_submission_emails_in_background,
-            submission_data,
-            file_data,
-            file.filename or "proof",
-            file.content_type or "application/octet-stream",
-        )
+        _executor.submit(send_submission_emails_in_background, submission_data)
 
         return jsonify({
             "success": True,
@@ -357,6 +351,21 @@ def admin_share_page():
         err=request.args.get("err"),
         active_tab="share",
     )
+
+
+@app.post("/admin/deny/<submission_id>")
+@require_admin
+def admin_deny(submission_id: str):
+    try:
+        data = get_submission_data(submission_id)
+        update_submission_status(submission_id, "denied")
+        update_google_sheets_status(submission_id, "denied")
+        send_student_denied_email(data)
+        logger.info("Admin denied %s for %s", submission_id, data["email"])
+        return jsonify({"ok": True})
+    except Exception as e:
+        logger.error("Deny error for %s: %s", submission_id, e)
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 @app.post("/admin/reshare/<submission_id>")

@@ -467,7 +467,8 @@ body {
 }
 
 .bank-value {
-    word-break: break-all;
+    word-break: break-word;
+    overflow-wrap: break-word;
 }
 
 .bank-copy-btn {
@@ -834,57 +835,79 @@ button[type="submit"]:disabled {
 /* Responsive Design */
 @media (max-width: 768px) {
     body {
-        padding: 10px;
+        padding: 8px;
     }
-    
+
+    /* Keep 2-column name/phone rows — just tighten the gap */
     .form-row {
-        grid-template-columns: 1fr;
-        gap: 15px;
+        gap: 10px;
     }
-    
+
     .chapters-container {
         grid-template-columns: 1fr;
-        gap: 20px;
+        gap: 16px;
     }
-    
+
     .checkbox-grid {
         grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
         gap: 8px;
     }
-    
+
     .cost-calculator {
         position: static;
     }
-    
+
     form {
-        padding: 20px;
-    }
-    
-    .form-header {
-        padding: 20px;
-    }
-    
-    .form-header h1 {
-        font-size: 1.5rem;
+        padding: 16px 14px;
     }
 
+    .form-header {
+        padding: 14px 16px;
+    }
+
+    .form-header h1 {
+        font-size: 1.25rem;
+    }
+
+    /* Keep header in one row on mobile — just shrink font */
     .form-header-with-nav {
-        flex-direction: column;
-        align-items: flex-start;
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .notice-section {
+        padding: 16px 14px;
+    }
+
+    .module-section {
+        padding: 16px 14px;
+        margin: 16px 0;
+    }
+
+    .disclaimer-section {
+        padding: 16px 14px;
+        margin: 16px 0;
+    }
+
+    .form-group {
+        margin-bottom: 14px;
     }
 
     .landing-main {
-        padding: 20px;
+        padding: 16px;
     }
 }
 
 @media (max-width: 480px) {
+    /* 2-column chapter grid on small phones — avoid full-width giant buttons */
     .checkbox-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
     }
-    
+
     .checkbox-grid label {
-        justify-content: center;
+        justify-content: flex-start;
+        padding: 9px 10px;
     }
 
     .banking-details {

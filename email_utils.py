@@ -4,8 +4,6 @@ import logging
 import os
 import smtplib
 import ssl
-from email import encoders
-from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -94,90 +92,34 @@ def _send_email(to: str, subject: str, text: str, html: str | None = None, reply
         return False
 
 
-def _send_email_with_attachment(
-    to: str,
-    subject: str,
-    text: str,
-    html: str | None,
-    attachment_name: str,
-    attachment_data: bytes,
-    attachment_mimetype: str,
-) -> bool:
-    host, port, username, password, from_email = _smtp_config()
-    if not all((host, username, password, from_email)):
-        logger.warning("SMTP not configured (attachment email)")
-        return False
-    try:
-        msg = MIMEMultipart("mixed")
-        msg["Subject"] = subject
-        msg["From"] = from_email
-        msg["To"] = to
-        body = MIMEMultipart("alternative")
-        body.attach(MIMEText(text, "plain"))
-        if html:
-            body.attach(MIMEText(html, "html"))
-        msg.attach(body)
-        part = MIMEBase("application", "octet-stream")
-        part.set_payload(attachment_data)
-        encoders.encode_base64(part)
-        part.add_header("Content-Disposition", "attachment", filename=(attachment_name or "attachment"))
-        msg.attach(part)
-        ctx = ssl.create_default_context()
-        with smtplib.SMTP(host, port) as server:
-            server.starttls(context=ctx)
-            server.login(username, password)
-            server.sendmail(from_email, [to], msg.as_string())
-        logger.info("Sent (attachment) to %s: %s", to, subject[:60])
-        return True
-    except Exception as e:
-        logger.error("Failed (attachment) to %s: %s", to, e)
-        return False
-
-
 # ---------------------------------------------------------------------------
 # Public email functions
 # ---------------------------------------------------------------------------
 
-def send_admin_new_submission_email(submission_data: dict, file_data: bytes, filename: str, content_type: str) -> bool:
-    """Send admin notification with approve/deny links and proof-of-payment attached."""
+def send_admin_new_submission_email(submission_data: dict) -> bool:
+    """Send admin a plain notification that a new submission arrived. Review via the dashboard."""
     admin_email = os.environ.get("ADMIN_EMAIL")
     base_url = (os.environ.get("BASE_URL") or "http://localhost:5000").rstrip("/")
     if not admin_email:
         logger.warning("ADMIN_EMAIL not set — skipping admin notification")
         return False
-    if not os.environ.get("APPROVAL_SECRET"):
-        logger.warning("APPROVAL_SECRET not set — approve/deny links will not work")
-        return False
-
-    sid = submission_data["submission_id"]
-    token = approval_token(sid)
-    approve_url = f"{base_url}/approve/{sid}?token={token}"
-    deny_url = f"{base_url}/deny/{sid}?token={token}"
 
     student_email = submission_data["email"]
     wa = _phone_to_whatsapp(submission_data.get("phone", ""))
     wa_url = f"https://wa.me/{wa}" if wa else ""
-    reach_html = (
-        f'<p><strong>Reach student:</strong> '
-        f'<a href="mailto:{student_email}" style="color:#667eea;">Email</a>'
-        + (f' | <a href="{wa_url}" style="color:#25D366;">WhatsApp</a>' if wa_url else "")
-        + "</p>"
-    )
+    dashboard_url = f"{base_url}/admin/submissions?status=pending"
 
-    subject = "MiyaStudyNotes: New study material request received"
+    subject = "MiyaStudyNotes: New study material request"
     text = (
         f"New submission received.\n\n"
-        f"Submission ID: {sid}\n"
         f"Name: {submission_data['first_name']} {submission_data['last_name']}\n"
         f"Email: {student_email}\n"
         f"Phone: {submission_data.get('phone', '')}\n"
         f"Module: {submission_data['module']}\n"
         f"Chapters: {', '.join(submission_data['chapters'])}\n"
-        f"Total cost: R{submission_data['total_cost']}\n"
-        f"Payment file: {filename} (attached)\n\n"
-        f"Reach student: Email {student_email}"
-        + (f" | WhatsApp {wa_url}" if wa_url else "")
-        + f"\n\nApprove: {approve_url}\nDeny: {deny_url}\n"
+        f"Total: R{submission_data['total_cost']}\n"
+        + (f"WhatsApp: {wa_url}\n" if wa_url else "")
+        + f"\nReview and approve/deny at: {dashboard_url}\n"
     )
     html = (
         f"<p>New submission received.</p>"
@@ -186,15 +128,12 @@ def send_admin_new_submission_email(submission_data: dict, file_data: bytes, fil
         f"<strong>Phone:</strong> {submission_data.get('phone', '')}<br>"
         f"<strong>Module:</strong> {submission_data['module']}<br>"
         f"<strong>Chapters:</strong> {', '.join(submission_data['chapters'])}<br>"
-        f"<strong>Total cost:</strong> R{submission_data['total_cost']}</p>"
-        f"<p>Proof of payment is attached.</p>"
-        f"{reach_html}"
-        f'<p><a href="{approve_url}" style="display:inline-block;background:#28a745;color:white;'
-        f'padding:12px 24px;text-decoration:none;border-radius:6px;margin-right:10px;">Approve</a>'
-        f'<a href="{deny_url}" style="display:inline-block;background:#dc3545;color:white;'
-        f'padding:12px 24px;text-decoration:none;border-radius:6px;">Deny</a></p>'
+        f"<strong>Total:</strong> R{submission_data['total_cost']}</p>"
+        + (f'<p><a href="{wa_url}" style="color:#25D366;">WhatsApp student</a></p>' if wa_url else "")
+        + f'<p><a href="{dashboard_url}" style="display:inline-block;background:#667eea;color:white;'
+        f'padding:12px 24px;text-decoration:none;border-radius:6px;">Review submissions</a></p>'
     )
-    return _send_email_with_attachment(admin_email, subject, text, html, filename or "proof", file_data, content_type or "application/octet-stream")
+    return _send_email(admin_email, subject, text, html=html)
 
 
 def send_student_confirmation_email(submission_data: dict) -> bool:
@@ -269,12 +208,12 @@ def send_student_denied_email(submission_data: dict) -> bool:
     return _send_email(submission_data["email"], subject, text, html=html, reply_to=_SUPPORT_EMAIL)
 
 
-def send_submission_emails_in_background(submission_data: dict, file_data: bytes, filename: str, content_type: str) -> None:
-    """Run in thread pool: admin email with attachment + student confirmation."""
+def send_submission_emails_in_background(submission_data: dict) -> None:
+    """Run in thread pool: admin notification + student confirmation."""
     sid = submission_data.get("submission_id", "?")
     logger.info("Background email task started for %s", sid)
     try:
-        ok_admin = send_admin_new_submission_email(submission_data, file_data, filename, content_type or "application/octet-stream")
+        ok_admin = send_admin_new_submission_email(submission_data)
         logger.info("Admin email: %s", "OK" if ok_admin else "FAILED")
         ok_student = send_student_confirmation_email(submission_data)
         logger.info("Student confirmation: %s", "OK" if ok_student else "FAILED")

@@ -27,7 +27,7 @@
   .chapters-section.active { display: block; }
   .chapters-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
     gap: 8px;
     margin-top: 8px;
   }
@@ -43,6 +43,7 @@
     transition: border-color 0.15s, background 0.15s;
     user-select: none;
   }
+  .chapter-label span { white-space: nowrap; }
   .chapter-label:hover { border-color: #667eea; background: #f5f6ff; }
   .chapter-label:has(input:checked) { border-color: #667eea; background: #f0f2ff; }
   .chapter-label input:checked + span { font-weight: 600; color: #667eea; }
@@ -52,7 +53,7 @@
   @media (max-width: 600px) {
     .form-grid { grid-template-columns: 1fr; }
     .form-group.full { grid-column: 1; }
-    .chapters-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+    .chapters-grid { grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); }
     .card-body { padding: 16px; }
   }
 
@@ -125,7 +126,7 @@
               <option value="EKN214">EKN214</option>
             </select>
           </div>
-          <div class="form-group full">
+          <div id="chaptersGroup" style="display:none;" class="form-group full">
             <label>Chapters *</label>
             <div id="ekn110Chapters" class="chapters-section">
               <div class="chapters-grid">
@@ -150,7 +151,7 @@
             </div>
             <div id="costDisplay" class="cost-display" style="display:none;"></div>
             <input type="hidden" name="totalCost" id="totalCostInput" value="0" />
-          </div>
+          </div>  {# end chaptersGroup #}
         </div>
         <div class="form-actions">
           <button type="submit" class="btn btn-primary">Share notes &amp; send email</button>
@@ -186,6 +187,7 @@
       }
     });
     if (module && chapterSections[module]) chapterSections[module].classList.add('active');
+    document.getElementById('chaptersGroup').style.display = module ? 'block' : 'none';
     calcCost();
   }
 
