@@ -29,16 +29,6 @@ _SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL", "info@miyastudynotes.co.za")
 _WHATSAPP_URL = "https://wa.me/27793688500"
 
 
-def _phone_to_whatsapp(phone: str, country_code: str = "27") -> str:
-    """Normalise a South African phone number for wa.me (e.g. 0793688500 to 27793688500)."""
-    digits = "".join(c for c in (phone or "") if c.isdigit())
-    if not digits:
-        return ""
-    if digits.startswith("0"):
-        digits = country_code + digits[1:]
-    elif not digits.startswith(country_code):
-        digits = country_code + digits
-    return digits
 
 
 def _contact_block_html() -> str:
@@ -95,46 +85,6 @@ def _send_email(to: str, subject: str, text: str, html: str | None = None, reply
 # ---------------------------------------------------------------------------
 # Public email functions
 # ---------------------------------------------------------------------------
-
-def send_admin_new_submission_email(submission_data: dict) -> bool:
-    """Send admin a plain notification that a new submission arrived. Review via the dashboard."""
-    admin_email = os.environ.get("ADMIN_EMAIL")
-    base_url = (os.environ.get("BASE_URL") or "http://localhost:5000").rstrip("/")
-    if not admin_email:
-        logger.warning("ADMIN_EMAIL not set — skipping admin notification")
-        return False
-
-    student_email = submission_data["email"]
-    wa = _phone_to_whatsapp(submission_data.get("phone", ""))
-    wa_url = f"https://wa.me/{wa}" if wa else ""
-    dashboard_url = f"{base_url}/admin/submissions?status=pending"
-
-    subject = "MiyaStudyNotes: New study material request"
-    text = (
-        f"New submission received.\n\n"
-        f"Name: {submission_data['first_name']} {submission_data['last_name']}\n"
-        f"Email: {student_email}\n"
-        f"Phone: {submission_data.get('phone', '')}\n"
-        f"Module: {submission_data['module']}\n"
-        f"Chapters: {', '.join(submission_data['chapters'])}\n"
-        f"Total: R{submission_data['total_cost']}\n"
-        + (f"WhatsApp: {wa_url}\n" if wa_url else "")
-        + f"\nReview and approve/deny at: {dashboard_url}\n"
-    )
-    html = (
-        f"<p>New submission received.</p>"
-        f"<p><strong>Name:</strong> {submission_data['first_name']} {submission_data['last_name']}<br>"
-        f"<strong>Email:</strong> {student_email}<br>"
-        f"<strong>Phone:</strong> {submission_data.get('phone', '')}<br>"
-        f"<strong>Module:</strong> {submission_data['module']}<br>"
-        f"<strong>Chapters:</strong> {', '.join(submission_data['chapters'])}<br>"
-        f"<strong>Total:</strong> R{submission_data['total_cost']}</p>"
-        + (f'<p><a href="{wa_url}" style="color:#25D366;">WhatsApp student</a></p>' if wa_url else "")
-        + f'<p><a href="{dashboard_url}" style="display:inline-block;background:#667eea;color:white;'
-        f'padding:12px 24px;text-decoration:none;border-radius:6px;">Review submissions</a></p>'
-    )
-    return _send_email(admin_email, subject, text, html=html)
-
 
 def send_student_confirmation_email(submission_data: dict) -> bool:
     """Confirm to the student that their request was received."""
@@ -209,14 +159,16 @@ def send_student_denied_email(submission_data: dict) -> bool:
 
 
 def send_submission_emails_in_background(submission_data: dict) -> None:
-    """Run in thread pool: admin notification + student confirmation."""
+    """Run in thread pool: admin push notification + student confirmation email."""
+    from notifications import notify_admin_new_submission
+
     sid = submission_data.get("submission_id", "?")
-    logger.info("Background email task started for %s", sid)
+    logger.info("Background notification task started for %s", sid)
     try:
-        ok_admin = send_admin_new_submission_email(submission_data)
-        logger.info("Admin email: %s", "OK" if ok_admin else "FAILED")
+        ok_admin = notify_admin_new_submission(submission_data)
+        logger.info("Admin push notification: %s", "OK" if ok_admin else "FAILED")
         ok_student = send_student_confirmation_email(submission_data)
         logger.info("Student confirmation: %s", "OK" if ok_student else "FAILED")
     except Exception as e:
         sentry_sdk.capture_exception(e)
-        logger.error("Background email error for %s: %s", sid, e)
+        logger.error("Background notification error for %s: %s", sid, e)

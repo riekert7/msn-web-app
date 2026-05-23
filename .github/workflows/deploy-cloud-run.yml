@@ -69,6 +69,7 @@ jobs:
             GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
             GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
             ADMINISTRATORS=${{ secrets.ADMINISTRATORS }}
+            NTFY_ADMIN_TOPIC=${{ secrets.NTFY_ADMIN_TOPIC }}
 
   # -----------------------------------------------------------------------
   # Dev — push to develop (tests must pass first)
@@ -146,3 +147,4 @@ jobs:
             GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
             GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
             ADMINISTRATORS=${{ secrets.ADMINISTRATORS }}
+            NTFY_ADMIN_TOPIC=${{ secrets.NTFY_ADMIN_TOPIC }}

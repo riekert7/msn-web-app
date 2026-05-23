@@ -40,7 +40,7 @@ A Google SSO-protected dashboard (restricted to emails listed in `ADMINISTRATORS
 | `GCS_BUCKET_NAME` | Yes | GCS bucket for proof-of-payment files |
 | `GOOGLE_SHEETS_ID` | Yes | Google Sheet ID for submission log |
 | `APPROVAL_SECRET` | Yes | HMAC secret for legacy email approval tokens |
-| `ADMIN_EMAIL` | Yes | Email address to notify on new submission |
+| `NTFY_ADMIN_TOPIC` | Yes | ntfy.sh topic for admin push notifications (e.g. `admin-alerts-xxxxxxxxxxxx`) |
 | `BASE_URL` | Yes | Public URL of the app (used in email links and OAuth redirect) |
 | `SECRET_KEY` | Yes | Flask session signing key |
 | `GOOGLE_CLIENT_ID` | Yes | OAuth 2.0 client ID (Google Cloud Console) |
