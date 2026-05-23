@@ -3,12 +3,11 @@
 Red phase: these tests describe the desired behaviour AFTER the async refactor.
 Run `pytest` now to see them fail; implement in main.py to make them green.
 """
-import time
 import threading
-from unittest.mock import MagicMock, patch, call
+import time
+from unittest.mock import MagicMock, patch
 
 from tests.conftest import make_approval_token
-
 
 SID = "test-sub-001"
 

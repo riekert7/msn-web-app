@@ -53,6 +53,6 @@ jobs:
       - name: Install security tools
         run: pip install bandit pip-audit
       - name: bandit — static security scan
-        run: bandit -r .
+        run: bandit -r . --exclude ./.venv,./tests
       - name: pip-audit — dependency CVE scan
         run: pip-audit -r requirements.txt

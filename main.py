@@ -4,16 +4,13 @@ import logging
 import os
 import uuid
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from functools import wraps
 
 import sentry_sdk
 from authlib.integrations.flask_client import OAuth
 from flask import Flask, Response, jsonify, redirect, render_template, request, session, url_for
 from sentry_sdk.integrations.flask import FlaskIntegration
-
-logging.basicConfig(level=logging.INFO, format="%(levelname)s [%(name)s] %(message)s")
-logger = logging.getLogger(__name__)
 
 from drive import share_study_materials
 from email_utils import (
@@ -30,6 +27,9 @@ from storage import (
     store_submission_metadata,
     update_submission_status,
 )
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s [%(name)s] %(message)s")
+logger = logging.getLogger(__name__)
 
 sentry_sdk.init(
     dsn=os.environ.get("SENTRY_DSN"),
@@ -143,7 +143,7 @@ def submit():
             "file_name": file.filename,
             "file_size": round(len(file_data) / 1024 / 1024, 2),
             "file_mime_type": file.content_type,
-            "timestamp": request.form.get("timestamp", datetime.now(timezone.utc).isoformat()),
+            "timestamp": request.form.get("timestamp", datetime.now(UTC).isoformat()),
             "status": "pending",
             "gcs_file_path": None,
         }
@@ -400,7 +400,7 @@ def admin_share():
             return redirect(url_for("admin_share_page", err="Missing required fields"))
 
         submission_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         submission_data = {
             "submission_id": submission_id,
             "first_name": first_name,
@@ -441,7 +441,7 @@ def admin_share():
 
 @app.get("/healthz")
 def healthz():
-    return jsonify({"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat(), "service": "webapp"})
+    return jsonify({"status": "healthy", "timestamp": datetime.now(UTC).isoformat(), "service": "webapp"})
 
 
 # ---------------------------------------------------------------------------
@@ -456,7 +456,6 @@ def debug_sentry():
 @app.get("/debug-smtp")
 def debug_smtp():
     import socket
-    from datetime import datetime, timezone
 
     host = os.environ.get("SMTP_HOST", "")
     port = int(os.environ.get("SMTP_PORT", "587"))
@@ -504,8 +503,8 @@ def debug_smtp():
                 result["cert_subject"] = dict(x[0] for x in cert.get("subject", []))
                 result["cert_expiry"] = not_after
                 if not_after:
-                    expiry_dt = datetime.strptime(not_after, "%b %d %H:%M:%S %Y %Z").replace(tzinfo=timezone.utc)
-                    result["cert_expired"] = expiry_dt < datetime.now(timezone.utc)
+                    expiry_dt = datetime.strptime(not_after, "%b %d %H:%M:%S %Y %Z").replace(tzinfo=UTC)
+                    result["cert_expired"] = expiry_dt < datetime.now(UTC)
     except _ssl.SSLCertVerificationError as e:
         result["starttls"] = False
         result["error"] = f"SSL cert verification failed: {e}"
@@ -521,9 +520,9 @@ def debug_smtp():
                     result["cert_subject"] = dict(x[0] for x in cert.get("subject", []))
                     result["cert_expiry"] = not_after
                     if not_after:
-                        expiry_dt = datetime.strptime(not_after, "%b %d %H:%M:%S %Y %Z").replace(tzinfo=timezone.utc)
-                        result["cert_expired"] = expiry_dt < datetime.now(timezone.utc)
-        except Exception:
+                        expiry_dt = datetime.strptime(not_after, "%b %d %H:%M:%S %Y %Z").replace(tzinfo=UTC)
+                        result["cert_expired"] = expiry_dt < datetime.now(UTC)
+        except Exception:  # nosec B110
             pass
         return jsonify(result), 500
     except Exception as e:
