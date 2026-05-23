@@ -164,7 +164,7 @@ def send_admin_new_submission_email(submission_data: dict, file_data: bytes, fil
         + "</p>"
     )
 
-    subject = "MiyaStudyNotes: New study material request – approve or deny"
+    subject = "MiyaStudyNotes: New study material request received"
     text = (
         f"New submission received.\n\n"
         f"Submission ID: {sid}\n"
