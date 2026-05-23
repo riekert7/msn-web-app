@@ -18,6 +18,10 @@ os.environ.setdefault("GOOGLE_SHEETS_ID", "test-sheet-id")
 os.environ.setdefault("EKN110_FOLDER_ID", "folder-ekn110")
 os.environ.setdefault("EKN120_FOLDER_ID", "folder-ekn120")
 os.environ.setdefault("EKN214_FOLDER_ID", "folder-ekn214")
+os.environ.setdefault("SECRET_KEY", "test-secret-key")
+os.environ.setdefault("GOOGLE_CLIENT_ID", "test-client-id")
+os.environ.setdefault("GOOGLE_CLIENT_SECRET", "test-client-secret")
+os.environ.setdefault("ADMINISTRATORS", "admin@example.com")
 
 # Patch GCS client before any module imports it
 _storage_patcher = patch("google.cloud.storage.Client")
