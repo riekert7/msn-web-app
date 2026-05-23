@@ -65,6 +65,10 @@ jobs:
             SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
             APPROVAL_SECRET=${{ secrets.APPROVAL_SECRET }}
             SENTRY_DSN=${{ secrets.SENTRY_DSN }}
+            SECRET_KEY=${{ secrets.SECRET_KEY }}
+            GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+            GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+            ADMINISTRATORS=${{ secrets.ADMINISTRATORS }}
 
   # -----------------------------------------------------------------------
   # Dev — push to develop (tests must pass first)
@@ -138,3 +142,7 @@ jobs:
             SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
             APPROVAL_SECRET=${{ secrets.APPROVAL_SECRET }}
             SENTRY_DSN=${{ secrets.SENTRY_DSN }}
+            SECRET_KEY=${{ secrets.SECRET_KEY }}
+            GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+            GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+            ADMINISTRATORS=${{ secrets.ADMINISTRATORS }}

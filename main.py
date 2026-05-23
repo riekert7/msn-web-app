@@ -5,9 +5,11 @@ import os
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
+from functools import wraps
 
 import sentry_sdk
-from flask import Flask, jsonify, render_template, request
+from authlib.integrations.flask_client import OAuth
+from flask import Flask, Response, jsonify, redirect, render_template, request, session, url_for
 from sentry_sdk.integrations.flask import FlaskIntegration
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s [%(name)s] %(message)s")
@@ -20,8 +22,9 @@ from email_utils import (
     send_submission_emails_in_background,
     verify_approval_token,
 )
-from sheets import log_to_google_sheets, update_google_sheets_status
+from sheets import get_all_submissions, log_to_google_sheets, update_google_sheets_status
 from storage import (
+    get_file_from_gcs,
     get_submission_data,
     store_file_in_gcs,
     store_submission_metadata,
@@ -37,6 +40,16 @@ sentry_sdk.init(
 )
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
+app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-me")
+
+oauth = OAuth(app)
+google_oauth = oauth.register(
+    name="google",
+    client_id=os.environ.get("GOOGLE_CLIENT_ID"),
+    client_secret=os.environ.get("GOOGLE_CLIENT_SECRET"),
+    server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+    client_kwargs={"scope": "openid email profile"},
+)
 
 _executor = ThreadPoolExecutor(max_workers=4)
 atexit.register(_executor.shutdown, wait=True)
@@ -47,6 +60,23 @@ MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
 
 def _allowed_file(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def _admin_emails() -> list[str]:
+    return [e.strip().lower() for e in os.environ.get("ADMINISTRATORS", "").split(",") if e.strip()]
+
+
+def require_admin(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        email = session.get("admin_email")
+        if not email:
+            return redirect(url_for("admin_login"))
+        if email not in _admin_emails():
+            session.clear()
+            return render_template("action_message.html", title="Access denied", message="Your account is not authorised as an admin."), 403
+        return f(*args, **kwargs)
+    return decorated
 
 
 # ---------------------------------------------------------------------------
@@ -151,11 +181,10 @@ def submit():
 
 
 # ---------------------------------------------------------------------------
-# Admin approve / deny
+# Admin approve / deny (email link flow)
 # ---------------------------------------------------------------------------
 
 def _approve_background(submission_id: str, data: dict) -> None:
-    """Drive sharing → GCS update with file info → Sheets → student email."""
     try:
         shared = share_study_materials(data["email"], data["module"], data["chapters"])
         update_submission_status(submission_id, "approved", {"shared_files": shared})
@@ -163,12 +192,11 @@ def _approve_background(submission_id: str, data: dict) -> None:
         send_student_approved_email(data, shared)
     except Exception as e:
         sentry_sdk.capture_exception(e)
-        print(f"[APPROVE] Background error for {submission_id}: {e}")
+        logger.error("[APPROVE] Background error for %s: %s", submission_id, e)
 
 
 @app.get("/approve/<submission_id>")
 def approve(submission_id: str):
-    """Admin approve link — token verified, GCS updated synchronously, heavy work backgrounded."""
     token = request.args.get("token")
     if not verify_approval_token(submission_id, token or ""):
         return render_template("action_message.html", title="Invalid or expired link", message="This approval link is invalid or has expired."), 403
@@ -188,18 +216,16 @@ def approve(submission_id: str):
 
 
 def _deny_background(submission_id: str, data: dict) -> None:
-    """Sheets update → student denied email."""
     try:
         update_google_sheets_status(submission_id, "denied")
         send_student_denied_email(data)
     except Exception as e:
         sentry_sdk.capture_exception(e)
-        print(f"[DENY] Background error for {submission_id}: {e}")
+        logger.error("[DENY] Background error for %s: %s", submission_id, e)
 
 
 @app.get("/deny/<submission_id>")
 def deny(submission_id: str):
-    """Admin deny link — token verified, GCS updated synchronously, email/Sheets backgrounded."""
     token = request.args.get("token")
     if not verify_approval_token(submission_id, token or ""):
         return render_template("action_message.html", title="Invalid or expired link", message="This link is invalid or has expired."), 403
@@ -219,6 +245,155 @@ def deny(submission_id: str):
 
 
 # ---------------------------------------------------------------------------
+# View proof of payment (token-protected, used in admin email)
+# ---------------------------------------------------------------------------
+
+@app.get("/view-payment/<submission_id>")
+def view_payment(submission_id: str):
+    token = request.args.get("token")
+    if not verify_approval_token(submission_id, token or ""):
+        return "Invalid or expired link", 403
+    try:
+        data = get_submission_data(submission_id)
+        gcs_path = data.get("gcs_file_path")
+        if not gcs_path:
+            return "File not found", 404
+        file_data, content_type = get_file_from_gcs(gcs_path)
+        filename = data.get("file_name", "proof")
+        return Response(
+            file_data,
+            mimetype=content_type,
+            headers={"Content-Disposition": f'inline; filename="{filename}"'},
+        )
+    except Exception as e:
+        logger.error("view_payment error for %s: %s", submission_id, e)
+        return "Error retrieving file", 500
+
+
+# ---------------------------------------------------------------------------
+# Admin dashboard (Google SSO)
+# ---------------------------------------------------------------------------
+
+@app.get("/admin/login")
+def admin_login():
+    return render_template("admin_login.html")
+
+
+@app.get("/admin/auth/google")
+def admin_auth_google():
+    base = os.environ.get("BASE_URL", "").rstrip("/")
+    callback_url = f"{base}/admin/callback" if base else url_for("admin_callback", _external=True)
+    return google_oauth.authorize_redirect(callback_url)
+
+
+@app.get("/admin/callback")
+def admin_callback():
+    try:
+        token = google_oauth.authorize_access_token()
+        user_info = token.get("userinfo") or google_oauth.userinfo()
+        email = (user_info.get("email") or "").lower()
+        if not email:
+            return render_template("action_message.html", title="Login failed", message="Could not retrieve your email from Google."), 400
+        if email not in _admin_emails():
+            return render_template("action_message.html", title="Access denied", message="Your Google account is not authorised as an admin."), 403
+        session["admin_email"] = email
+        session["admin_name"] = user_info.get("name", email)
+        return redirect(url_for("admin_dashboard"))
+    except Exception as e:
+        logger.error("OAuth callback error: %s", e)
+        return render_template("action_message.html", title="Login error", message=f"Something went wrong during login: {e}"), 500
+
+
+@app.get("/admin/logout")
+def admin_logout():
+    session.clear()
+    return redirect(url_for("admin_login"))
+
+
+@app.get("/admin")
+@require_admin
+def admin_dashboard():
+    submissions = get_all_submissions()
+    msg = request.args.get("msg")
+    err = request.args.get("err")
+    return render_template(
+        "admin_dashboard.html",
+        submissions=submissions,
+        admin_email=session.get("admin_email"),
+        admin_name=session.get("admin_name"),
+        msg=msg,
+        err=err,
+    )
+
+
+@app.post("/admin/reshare/<submission_id>")
+@require_admin
+def admin_reshare(submission_id: str):
+    try:
+        data = get_submission_data(submission_id)
+        shared = share_study_materials(data["email"], data["module"], data["chapters"])
+        send_student_approved_email(data, shared)
+        update_submission_status(submission_id, "approved", {"shared_files": shared})
+        update_google_sheets_status(submission_id, "approved")
+        logger.info("Admin reshared %s for %s", submission_id, data["email"])
+        return jsonify({"ok": True, "shared_count": len(shared)})
+    except Exception as e:
+        logger.error("Reshare error for %s: %s", submission_id, e)
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.post("/admin/share")
+@require_admin
+def admin_share():
+    try:
+        first_name = request.form["firstName"].strip()
+        last_name = request.form["lastName"].strip()
+        email = request.form["email"].strip().lower()
+        phone = request.form.get("phone", "").strip()
+        module = request.form["module"]
+        chapters = [c.strip() for c in request.form.getlist("chapters") if c.strip()]
+        total_cost = int(request.form.get("totalCost", 0))
+
+        if not all((first_name, last_name, email, module, chapters)):
+            return redirect(url_for("admin_dashboard", err="Missing required fields"))
+
+        submission_id = str(uuid.uuid4())
+        now = datetime.now(timezone.utc).isoformat()
+        submission_data = {
+            "submission_id": submission_id,
+            "first_name": first_name,
+            "last_name": last_name,
+            "email": email,
+            "phone": phone,
+            "module": module,
+            "chapters": chapters,
+            "total_cost": total_cost,
+            "file_name": None,
+            "file_size": 0,
+            "file_mime_type": None,
+            "timestamp": now,
+            "status": "approved",
+            "gcs_file_path": None,
+            "admin_share": True,
+        }
+
+        store_submission_metadata(submission_data)
+        log_to_google_sheets(submission_data)
+
+        shared = share_study_materials(email, module, chapters)
+        send_student_approved_email(submission_data, shared)
+        update_google_sheets_status(submission_id, "approved")
+
+        logger.info("Admin direct-shared %s %s chapters with %s", module, chapters, email)
+        return redirect(url_for("admin_dashboard", msg=f"Shared {len(shared)} file(s) with {email}"))
+
+    except Exception as e:
+        sentry_sdk.capture_exception(e)
+        logger.error("Admin share error: %s", e)
+        return redirect(url_for("admin_dashboard", err=str(e)))
+
+
+# ---------------------------------------------------------------------------
 # Health check
 # ---------------------------------------------------------------------------
 
@@ -228,8 +403,101 @@ def healthz():
 
 
 # ---------------------------------------------------------------------------
-# Sentry
+# Debug endpoints
 # ---------------------------------------------------------------------------
+
 @app.get("/debug-sentry")
 def debug_sentry():
     1 / 0
+
+
+@app.get("/debug-smtp")
+def debug_smtp():
+    import socket
+    from datetime import datetime, timezone
+
+    host = os.environ.get("SMTP_HOST", "")
+    port = int(os.environ.get("SMTP_PORT", "587"))
+    username = os.environ.get("SMTP_USERNAME", "")
+    password = os.environ.get("SMTP_PASSWORD", "")
+
+    result = {
+        "smtp_host": host or None,
+        "smtp_port": port,
+        "smtp_username": username or None,
+        "tcp_connect": None,
+        "starttls": None,
+        "cert_subject": None,
+        "cert_expiry": None,
+        "cert_expired": None,
+        "login": None,
+        "error": None,
+    }
+
+    if not host:
+        result["error"] = "SMTP_HOST not set"
+        return jsonify(result), 500
+
+    try:
+        import smtplib
+        import ssl as _ssl
+        with socket.create_connection((host, port), timeout=10):
+            result["tcp_connect"] = True
+    except Exception as e:
+        result["tcp_connect"] = False
+        result["error"] = f"TCP connect failed: {e}"
+        return jsonify(result), 500
+
+    import smtplib
+    import ssl as _ssl
+
+    ctx = _ssl.create_default_context()
+    try:
+        with smtplib.SMTP(host, port, timeout=10) as server:
+            server.starttls(context=ctx)
+            result["starttls"] = True
+            cert = server.sock.getpeercert()
+            if cert:
+                not_after = cert.get("notAfter")
+                result["cert_subject"] = dict(x[0] for x in cert.get("subject", []))
+                result["cert_expiry"] = not_after
+                if not_after:
+                    expiry_dt = datetime.strptime(not_after, "%b %d %H:%M:%S %Y %Z").replace(tzinfo=timezone.utc)
+                    result["cert_expired"] = expiry_dt < datetime.now(timezone.utc)
+    except _ssl.SSLCertVerificationError as e:
+        result["starttls"] = False
+        result["error"] = f"SSL cert verification failed: {e}"
+        ctx_noverify = _ssl.create_default_context()
+        ctx_noverify.check_hostname = False
+        ctx_noverify.verify_mode = _ssl.CERT_NONE
+        try:
+            with smtplib.SMTP(host, port, timeout=10) as server:
+                server.starttls(context=ctx_noverify)
+                cert = server.sock.getpeercert()
+                if cert:
+                    not_after = cert.get("notAfter")
+                    result["cert_subject"] = dict(x[0] for x in cert.get("subject", []))
+                    result["cert_expiry"] = not_after
+                    if not_after:
+                        expiry_dt = datetime.strptime(not_after, "%b %d %H:%M:%S %Y %Z").replace(tzinfo=timezone.utc)
+                        result["cert_expired"] = expiry_dt < datetime.now(timezone.utc)
+        except Exception:
+            pass
+        return jsonify(result), 500
+    except Exception as e:
+        result["starttls"] = False
+        result["error"] = f"STARTTLS failed: {e}"
+        return jsonify(result), 500
+
+    if username and password:
+        try:
+            with smtplib.SMTP(host, port, timeout=10) as server:
+                server.starttls(context=ctx)
+                server.login(username, password)
+                result["login"] = True
+        except Exception as e:
+            result["login"] = False
+            result["error"] = f"Login failed: {e}"
+            return jsonify(result), 500
+
+    return jsonify(result)

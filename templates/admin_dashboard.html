@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — MiyaStudyNotes</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f4f6fb;
+      color: #333;
+    }
+
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .header-title { font-size: 20px; font-weight: 700; }
+    .header-user { font-size: 14px; opacity: 0.85; }
+    .logout-btn {
+      padding: 7px 16px;
+      border: 2px solid rgba(255,255,255,0.6);
+      border-radius: 8px;
+      color: #fff;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      transition: background 0.15s;
+    }
+    .logout-btn:hover { background: rgba(255,255,255,0.15); }
+
+    /* Layout */
+    .page { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+
+    /* Banner */
+    .banner {
+      padding: 14px 18px;
+      border-radius: 10px;
+      margin-bottom: 24px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .banner-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .banner-error   { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+    /* Section card */
+    .card {
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      margin-bottom: 32px;
+      overflow: hidden;
+    }
+    .card-header {
+      padding: 18px 24px;
+      border-bottom: 1px solid #eee;
+      font-size: 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .card-body { padding: 24px; }
+
+    /* Table */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th {
+      text-align: left;
+      padding: 10px 12px;
+      background: #f8f9fa;
+      font-weight: 600;
+      color: #555;
+      border-bottom: 2px solid #eee;
+      white-space: nowrap;
+    }
+    tbody tr { border-bottom: 1px solid #f0f0f0; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #fafbff; }
+    tbody td { padding: 10px 12px; vertical-align: middle; }
+    .status-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .status-approved { background: #d4edda; color: #155724; }
+    .status-pending  { background: #fff3cd; color: #856404; }
+    .status-denied   { background: #f8d7da; color: #721c24; }
+    .status-unknown  { background: #e9ecef; color: #6c757d; }
+
+    /* Buttons */
+    .btn {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-reshare { background: #667eea; color: #fff; }
+    .btn-reshare:disabled { background: #aaa; cursor: not-allowed; opacity: 0.7; }
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: #fff;
+      padding: 12px 28px;
+      font-size: 15px;
+      border-radius: 10px;
+    }
+
+    /* Direct share form */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label { font-size: 13px; font-weight: 600; color: #555; }
+    .form-group input, .form-group select {
+      padding: 10px 12px;
+      border: 1.5px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.2s;
+    }
+    .form-group input:focus, .form-group select:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    .form-group.full { grid-column: 1 / -1; }
+
+    /* Chapter checkboxes */
+    .chapters-section { display: none; margin-top: 8px; }
+    .chapters-section.active { display: block; }
+    .chapters-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .chapter-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border: 1.5px solid #ddd;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .chapter-label:hover { border-color: #667eea; background: #f5f6ff; }
+    .chapter-label input:checked + span { font-weight: 600; color: #667eea; }
+    .chapter-label:has(input:checked) { border-color: #667eea; background: #f0f2ff; }
+    .cost-display {
+      margin-top: 12px;
+      font-size: 14px;
+      color: #667eea;
+      font-weight: 600;
+    }
+    .form-actions { margin-top: 24px; }
+
+    /* Empty state */
+    .empty { padding: 40px; text-align: center; color: #aaa; font-size: 14px; }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div>
+    <div class="header-title">MiyaStudyNotes Admin</div>
+    <div class="header-user">{{ admin_email }}</div>
+  </div>
+  <a href="/admin/logout" class="logout-btn">Sign out</a>
+</header>
+
+<div class="page">
+
+  {% if msg %}
+  <div class="banner banner-success">{{ msg }}</div>
+  {% endif %}
+  {% if err %}
+  <div class="banner banner-error">Error: {{ err }}</div>
+  {% endif %}
+
+  <!-- Submissions table -->
+  <div class="card">
+    <div class="card-header">
+      Submissions
+      <span style="font-size:13px;font-weight:400;color:#999;">{{ submissions|length }} total</span>
+    </div>
+    {% if submissions %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Module</th>
+            <th>Chapters</th>
+            <th>Cost</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in submissions %}
+          <tr id="row-{{ s.submission_id }}">
+            <td style="white-space:nowrap;color:#999;font-size:12px;">
+              {{ s.timestamp[:10] if s.timestamp else '—' }}
+            </td>
+            <td>{{ s.name }}</td>
+            <td style="font-size:12px;">{{ s.email }}</td>
+            <td><strong>{{ s.module }}</strong></td>
+            <td style="font-size:12px;max-width:200px;">{{ s.chapters }}</td>
+            <td style="white-space:nowrap;">R{{ s.total_cost }}</td>
+            <td>
+              {% set st = s.status | lower if s.status else 'unknown' %}
+              <span class="status-badge status-{{ st if st in ['approved','pending','denied'] else 'unknown' }}">
+                {{ s.status or 'unknown' }}
+              </span>
+            </td>
+            <td>
+              {% if s.status != 'approved' %}
+              <button
+                class="btn btn-reshare"
+                onclick="reshare(this, '{{ s.submission_id }}')"
+                data-id="{{ s.submission_id }}"
+              >Reshare</button>
+              {% else %}
+              <span style="font-size:12px;color:#aaa;">Done</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty">No submissions found.</div>
+    {% endif %}
+  </div>
+
+  <!-- Direct share form -->
+  <div class="card">
+    <div class="card-header">Direct Share</div>
+    <div class="card-body">
+      <form method="POST" action="/admin/share">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>First name *</label>
+            <input type="text" name="firstName" required placeholder="e.g. Reba" />
+          </div>
+          <div class="form-group">
+            <label>Last name *</label>
+            <input type="text" name="lastName" required placeholder="e.g. Mothupi" />
+          </div>
+          <div class="form-group">
+            <label>Email *</label>
+            <input type="email" name="email" required placeholder="student@example.com" />
+          </div>
+          <div class="form-group">
+            <label>Phone</label>
+            <input type="tel" name="phone" placeholder="0791234567" />
+          </div>
+          <div class="form-group full">
+            <label>Module *</label>
+            <select name="module" id="moduleSelect" onchange="showChapters(this.value)" required>
+              <option value="">— Select module —</option>
+              <option value="EKN110">EKN110</option>
+              <option value="EKN120">EKN120</option>
+              <option value="EKN214">EKN214</option>
+            </select>
+          </div>
+
+          <div class="form-group full">
+            <label>Chapters *</label>
+
+            <div id="ekn110Chapters" class="chapters-section">
+              <div class="chapters-grid">
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN110-1"  data-cost="15" onchange="calcCost()"><span>Chapter 1</span></label>
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN110-2"  data-cost="15" onchange="calcCost()"><span>Chapter 2</span></label>
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN110-3"  data-cost="15" onchange="calcCost()"><span>Chapter 3</span></label>
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN110-4"  data-cost="15" onchange="calcCost()"><span>Chapter 4</span></label>
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN110-5"  data-cost="15" onchange="calcCost()"><span>Chapter 5</span></label>
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN110-6"  data-cost="15" onchange="calcCost()"><span>Chapter 6</span></label>
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN110-7"  data-cost="15" onchange="calcCost()"><span>Chapter 7</span></label>
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN110-8"  data-cost="15" onchange="calcCost()"><span>Chapter 8</span></label>
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN110-9"  data-cost="15" onchange="calcCost()"><span>Chapter 9</span></label>
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN110-10" data-cost="15" onchange="calcCost()"><span>Chapter 10</span></label>
+              </div>
+            </div>
+
+            <div id="ekn120Chapters" class="chapters-section">
+              <div class="chapters-grid">
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN120-11" data-cost="15" onchange="calcCost()"><span>Chapter 11</span></label>
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN120-12" data-cost="15" onchange="calcCost()"><span>Chapter 12</span></label>
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN120-13" data-cost="15" onchange="calcCost()"><span>Chapter 13</span></label>
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN120-14" data-cost="15" onchange="calcCost()"><span>Chapter 14</span></label>
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN120-15" data-cost="15" onchange="calcCost()"><span>Chapter 15</span></label>
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN120-16" data-cost="15" onchange="calcCost()"><span>Chapter 16</span></label>
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN120-17" data-cost="15" onchange="calcCost()"><span>Chapter 17</span></label>
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN120-18" data-cost="15" onchange="calcCost()"><span>Chapter 18</span></label>
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN120-19" data-cost="15" onchange="calcCost()"><span>Chapter 19</span></label>
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN120-20" data-cost="15" onchange="calcCost()"><span>Chapter 20</span></label>
+              </div>
+            </div>
+
+            <div id="ekn214Chapters" class="chapters-section">
+              <div class="chapters-grid">
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN214-3" data-cost="20" onchange="calcCost()"><span>Chapter 3</span></label>
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN214-4" data-cost="20" onchange="calcCost()"><span>Chapter 4</span></label>
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN214-5" data-cost="20" onchange="calcCost()"><span>Chapter 5</span></label>
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN214-6" data-cost="20" onchange="calcCost()"><span>Chapter 6</span></label>
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN214-7" data-cost="20" onchange="calcCost()"><span>Chapter 7</span></label>
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN214-8" data-cost="20" onchange="calcCost()"><span>Chapter 8</span></label>
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN214-9" data-cost="20" onchange="calcCost()"><span>Chapter 9</span></label>
+              </div>
+            </div>
+
+            <div id="costDisplay" class="cost-display" style="display:none;"></div>
+            <input type="hidden" name="totalCost" id="totalCostInput" value="0" />
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Share notes &amp; send email</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<script>
+  const chapterSections = {
+    EKN110: document.getElementById('ekn110Chapters'),
+    EKN120: document.getElementById('ekn120Chapters'),
+    EKN214: document.getElementById('ekn214Chapters'),
+  };
+
+  function showChapters(module) {
+    // Uncheck all boxes in hidden sections
+    Object.entries(chapterSections).forEach(([key, el]) => {
+      if (key !== module) {
+        el.classList.remove('active');
+        el.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = false);
+      }
+    });
+    if (module && chapterSections[module]) {
+      chapterSections[module].classList.add('active');
+    }
+    calcCost();
+  }
+
+  function calcCost() {
+    const checked = document.querySelectorAll('input[name="chapters"]:checked');
+    let total = 0;
+    checked.forEach(cb => { total += parseInt(cb.dataset.cost) || 0; });
+    const display = document.getElementById('costDisplay');
+    const input = document.getElementById('totalCostInput');
+    input.value = total;
+    if (total > 0) {
+      display.style.display = 'block';
+      display.textContent = `Total: R${total}`;
+    } else {
+      display.style.display = 'none';
+    }
+  }
+
+  async function reshare(btn, submissionId) {
+    btn.disabled = true;
+    btn.textContent = 'Sharing…';
+    try {
+      const res = await fetch(`/admin/reshare/${submissionId}`, { method: 'POST' });
+      const data = await res.json();
+      if (data.ok) {
+        const row = document.getElementById(`row-${submissionId}`);
+        const badge = row.querySelector('.status-badge');
+        if (badge) {
+          badge.className = 'status-badge status-approved';
+          badge.textContent = 'approved';
+        }
+        btn.replaceWith(document.createTextNode('Done'));
+      } else {
+        btn.disabled = false;
+        btn.textContent = 'Reshare';
+        alert(`Reshare failed: ${data.error || 'unknown error'}`);
+      }
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = 'Reshare';
+      alert(`Network error: ${e.message}`);
+    }
+  }
+</script>
+
+</body>
+</html>
