@@ -357,7 +357,7 @@ body {
 
 .miya-block-text {
     flex: 1;
-    min-width: 200px;
+    min-width: 0;
 }
 
 .miya-block-text p {
@@ -921,8 +921,8 @@ button[type="submit"]:disabled {
     .bank-copy-btn {
         justify-self: end;
         margin-top: 0;
-        padding: 3px 8px;
-        font-size: 0.7rem;
+        padding: 7px 12px;
+        font-size: 0.75rem;
     }
 }
 

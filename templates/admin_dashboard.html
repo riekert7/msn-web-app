@@ -11,68 +11,74 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: #f4f6fb;
       color: #333;
+      min-height: 100vh;
     }
 
-    /* Header */
+    /* ── Header ── */
     .header {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: #fff;
-      padding: 16px 32px;
+      padding: 14px 24px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
+      gap: 12px;
+      flex-wrap: wrap;
     }
-    .header-title { font-size: 20px; font-weight: 700; }
-    .header-user { font-size: 14px; opacity: 0.85; }
+    .header-title { font-size: 18px; font-weight: 700; white-space: nowrap; }
+    .header-user  { font-size: 13px; opacity: 0.85; word-break: break-all; }
     .logout-btn {
-      padding: 7px 16px;
+      padding: 8px 16px;
       border: 2px solid rgba(255,255,255,0.6);
       border-radius: 8px;
       color: #fff;
       text-decoration: none;
       font-size: 13px;
       font-weight: 600;
-      transition: background 0.15s;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
     .logout-btn:hover { background: rgba(255,255,255,0.15); }
 
-    /* Layout */
-    .page { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+    /* ── Layout ── */
+    .page { max-width: 1200px; margin: 0 auto; padding: 24px 16px; }
 
-    /* Banner */
+    /* ── Banners ── */
     .banner {
-      padding: 14px 18px;
+      padding: 13px 16px;
       border-radius: 10px;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
       font-size: 14px;
       font-weight: 500;
     }
     .banner-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
     .banner-error   { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
 
-    /* Section card */
+    /* ── Cards ── */
     .card {
       background: #fff;
       border-radius: 14px;
       box-shadow: 0 2px 12px rgba(0,0,0,0.07);
-      margin-bottom: 32px;
+      margin-bottom: 28px;
       overflow: hidden;
     }
     .card-header {
-      padding: 18px 24px;
+      padding: 16px 20px;
       border-bottom: 1px solid #eee;
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 700;
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
     }
-    .card-body { padding: 24px; }
+    .card-header-meta { font-size: 12px; font-weight: 400; color: #999; }
+    .card-body { padding: 20px; }
 
-    /* Table */
-    .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    /* ── Table ── */
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 640px; }
     thead th {
       text-align: left;
       padding: 10px 12px;
@@ -86,22 +92,24 @@
     tbody tr:last-child { border-bottom: none; }
     tbody tr:hover { background: #fafbff; }
     tbody td { padding: 10px 12px; vertical-align: middle; }
+
     .status-badge {
       display: inline-block;
       padding: 3px 10px;
       border-radius: 20px;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 600;
+      white-space: nowrap;
     }
     .status-approved { background: #d4edda; color: #155724; }
     .status-pending  { background: #fff3cd; color: #856404; }
     .status-denied   { background: #f8d7da; color: #721c24; }
     .status-unknown  { background: #e9ecef; color: #6c757d; }
 
-    /* Buttons */
+    /* ── Buttons ── */
     .btn {
       display: inline-block;
-      padding: 6px 14px;
+      padding: 6px 12px;
       border-radius: 7px;
       font-size: 12px;
       font-weight: 600;
@@ -109,42 +117,47 @@
       cursor: pointer;
       text-decoration: none;
       transition: opacity 0.15s;
+      white-space: nowrap;
     }
-    .btn:hover { opacity: 0.85; }
-    .btn-reshare { background: #667eea; color: #fff; }
-    .btn-reshare:disabled { background: #aaa; cursor: not-allowed; opacity: 0.7; }
+    .btn:hover:not(:disabled) { opacity: 0.82; }
+    .btn:disabled { cursor: not-allowed; opacity: 0.55; }
+
+    .btn-reshare         { background: #667eea; color: #fff; }
+    .btn-reshare-done    { background: transparent; color: #667eea; border: 1.5px solid #667eea; }
+    .btn-pop             { background: #f0f2ff; color: #667eea; border: 1.5px solid #c7cef7; }
     .btn-primary {
       background: linear-gradient(135deg, #667eea, #764ba2);
       color: #fff;
       padding: 12px 28px;
       font-size: 15px;
       border-radius: 10px;
+      width: 100%;
     }
 
-    /* Direct share form */
+    .actions-cell { display: flex; gap: 6px; flex-wrap: wrap; }
+
+    /* ── Direct share form ── */
     .form-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 16px;
+      gap: 14px;
     }
-    @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
-    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
     .form-group label { font-size: 13px; font-weight: 600; color: #555; }
-    .form-group input, .form-group select {
+    .form-group input,
+    .form-group select {
       padding: 10px 12px;
       border: 1.5px solid #ddd;
       border-radius: 8px;
       font-size: 14px;
+      width: 100%;
       transition: border-color 0.2s;
     }
-    .form-group input:focus, .form-group select:focus {
-      outline: none;
-      border-color: #667eea;
-    }
+    .form-group input:focus,
+    .form-group select:focus { outline: none; border-color: #667eea; }
     .form-group.full { grid-column: 1 / -1; }
 
-    /* Chapter checkboxes */
-    .chapters-section { display: none; margin-top: 8px; }
+    .chapters-section { display: none; margin-top: 6px; }
     .chapters-section.active { display: block; }
     .chapters-grid {
       display: grid;
@@ -162,20 +175,123 @@
       cursor: pointer;
       font-size: 13px;
       transition: border-color 0.15s, background 0.15s;
+      user-select: none;
     }
     .chapter-label:hover { border-color: #667eea; background: #f5f6ff; }
-    .chapter-label input:checked + span { font-weight: 600; color: #667eea; }
     .chapter-label:has(input:checked) { border-color: #667eea; background: #f0f2ff; }
+    .chapter-label input:checked + span { font-weight: 600; color: #667eea; }
+
     .cost-display {
-      margin-top: 12px;
+      margin-top: 10px;
       font-size: 14px;
       color: #667eea;
       font-weight: 600;
     }
-    .form-actions { margin-top: 24px; }
+    .form-actions { margin-top: 20px; }
 
-    /* Empty state */
+    /* ── POP modal ── */
+    .pop-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.65);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .pop-overlay.open { display: flex; }
+    .pop-modal {
+      background: #fff;
+      border-radius: 14px;
+      width: 100%;
+      max-width: 700px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .pop-modal-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .pop-modal-title { font-size: 14px; font-weight: 700; color: #333; }
+    .pop-modal-close {
+      background: none;
+      border: none;
+      font-size: 22px;
+      cursor: pointer;
+      color: #999;
+      line-height: 1;
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+    .pop-modal-close:hover { background: #f0f0f0; color: #333; }
+    .pop-modal-body {
+      flex: 1;
+      overflow: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f8f9fa;
+      min-height: 200px;
+    }
+    .pop-modal-body img {
+      max-width: 100%;
+      max-height: 70vh;
+      object-fit: contain;
+      display: block;
+    }
+    .pop-modal-body iframe {
+      width: 100%;
+      height: 70vh;
+      border: none;
+    }
+    .pop-modal-body .pop-loading,
+    .pop-modal-body .pop-error {
+      padding: 40px;
+      text-align: center;
+      color: #999;
+      font-size: 14px;
+    }
+    .pop-modal-body .pop-error { color: #721c24; }
+    .pop-modal-footer {
+      padding: 12px 18px;
+      border-top: 1px solid #eee;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .btn-open-tab {
+      background: #f0f2ff;
+      color: #667eea;
+      border: 1.5px solid #c7cef7;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    /* ── Empty state ── */
     .empty { padding: 40px; text-align: center; color: #aaa; font-size: 14px; }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .form-group.full { grid-column: 1; }
+      .btn-primary { font-size: 14px; padding: 12px 20px; }
+      .chapters-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+      .card-body { padding: 16px; }
+    }
   </style>
 </head>
 <body>
@@ -197,11 +313,11 @@
   <div class="banner banner-error">Error: {{ err }}</div>
   {% endif %}
 
-  <!-- Submissions table -->
+  <!-- Submissions -->
   <div class="card">
     <div class="card-header">
       Submissions
-      <span style="font-size:13px;font-weight:400;color:#999;">{{ submissions|length }} total</span>
+      <span class="card-header-meta">{{ submissions|length }} total</span>
     </div>
     {% if submissions %}
     <div class="table-wrap">
@@ -215,36 +331,41 @@
             <th>Chapters</th>
             <th>Cost</th>
             <th>Status</th>
-            <th>Action</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           {% for s in submissions %}
+          {% set is_approved = s.status | lower == 'approved' %}
           <tr id="row-{{ s.submission_id }}">
-            <td style="white-space:nowrap;color:#999;font-size:12px;">
+            <td style="white-space:nowrap;color:#999;font-size:11px;">
               {{ s.timestamp[:10] if s.timestamp else '—' }}
             </td>
-            <td>{{ s.name }}</td>
-            <td style="font-size:12px;">{{ s.email }}</td>
+            <td style="white-space:nowrap;">{{ s.name }}</td>
+            <td style="font-size:12px;word-break:break-all;">{{ s.email }}</td>
             <td><strong>{{ s.module }}</strong></td>
-            <td style="font-size:12px;max-width:200px;">{{ s.chapters }}</td>
+            <td style="font-size:12px;max-width:180px;">{{ s.chapters }}</td>
             <td style="white-space:nowrap;">R{{ s.total_cost }}</td>
             <td>
               {% set st = s.status | lower if s.status else 'unknown' %}
-              <span class="status-badge status-{{ st if st in ['approved','pending','denied'] else 'unknown' }}">
+              <span class="status-badge status-{{ st if st in ['approved','pending','denied'] else 'unknown' }}" id="badge-{{ s.submission_id }}">
                 {{ s.status or 'unknown' }}
               </span>
             </td>
             <td>
-              {% if s.status != 'approved' %}
-              <button
-                class="btn btn-reshare"
-                onclick="reshare(this, '{{ s.submission_id }}')"
-                data-id="{{ s.submission_id }}"
-              >Reshare</button>
-              {% else %}
-              <span style="font-size:12px;color:#aaa;">Done</span>
-              {% endif %}
+              <div class="actions-cell">
+                <button
+                  class="btn {% if is_approved %}btn-reshare-done{% else %}btn-reshare{% endif %}"
+                  id="reshare-btn-{{ s.submission_id }}"
+                  onclick="reshare(this, '{{ s.submission_id }}')"
+                  title="{% if is_approved %}Reshare (already approved){% else %}Share notes &amp; send email{% endif %}"
+                >{% if is_approved %}Reshare{% else %}Reshare{% endif %}</button>
+                <button
+                  class="btn btn-pop"
+                  onclick="openPop('{{ s.submission_id }}', '{{ s.name }}')"
+                  title="Preview proof of payment"
+                >POP</button>
+              </div>
             </td>
           </tr>
           {% endfor %}
@@ -256,7 +377,7 @@
     {% endif %}
   </div>
 
-  <!-- Direct share form -->
+  <!-- Direct share -->
   <div class="card">
     <div class="card-header">Direct Share</div>
     <div class="card-body">
@@ -287,49 +408,30 @@
               <option value="EKN214">EKN214</option>
             </select>
           </div>
-
           <div class="form-group full">
             <label>Chapters *</label>
 
             <div id="ekn110Chapters" class="chapters-section">
               <div class="chapters-grid">
-                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN110-1"  data-cost="15" onchange="calcCost()"><span>Chapter 1</span></label>
-                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN110-2"  data-cost="15" onchange="calcCost()"><span>Chapter 2</span></label>
-                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN110-3"  data-cost="15" onchange="calcCost()"><span>Chapter 3</span></label>
-                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN110-4"  data-cost="15" onchange="calcCost()"><span>Chapter 4</span></label>
-                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN110-5"  data-cost="15" onchange="calcCost()"><span>Chapter 5</span></label>
-                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN110-6"  data-cost="15" onchange="calcCost()"><span>Chapter 6</span></label>
-                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN110-7"  data-cost="15" onchange="calcCost()"><span>Chapter 7</span></label>
-                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN110-8"  data-cost="15" onchange="calcCost()"><span>Chapter 8</span></label>
-                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN110-9"  data-cost="15" onchange="calcCost()"><span>Chapter 9</span></label>
-                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN110-10" data-cost="15" onchange="calcCost()"><span>Chapter 10</span></label>
+                {% for n in range(1, 11) %}
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN110-{{ n }}" data-cost="15" onchange="calcCost()"><span>Chapter {{ n }}</span></label>
+                {% endfor %}
               </div>
             </div>
 
             <div id="ekn120Chapters" class="chapters-section">
               <div class="chapters-grid">
-                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN120-11" data-cost="15" onchange="calcCost()"><span>Chapter 11</span></label>
-                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN120-12" data-cost="15" onchange="calcCost()"><span>Chapter 12</span></label>
-                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN120-13" data-cost="15" onchange="calcCost()"><span>Chapter 13</span></label>
-                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN120-14" data-cost="15" onchange="calcCost()"><span>Chapter 14</span></label>
-                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN120-15" data-cost="15" onchange="calcCost()"><span>Chapter 15</span></label>
-                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN120-16" data-cost="15" onchange="calcCost()"><span>Chapter 16</span></label>
-                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN120-17" data-cost="15" onchange="calcCost()"><span>Chapter 17</span></label>
-                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN120-18" data-cost="15" onchange="calcCost()"><span>Chapter 18</span></label>
-                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN120-19" data-cost="15" onchange="calcCost()"><span>Chapter 19</span></label>
-                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN120-20" data-cost="15" onchange="calcCost()"><span>Chapter 20</span></label>
+                {% for n in range(11, 21) %}
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN120-{{ n }}" data-cost="15" onchange="calcCost()"><span>Chapter {{ n }}</span></label>
+                {% endfor %}
               </div>
             </div>
 
             <div id="ekn214Chapters" class="chapters-section">
               <div class="chapters-grid">
-                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN214-3" data-cost="20" onchange="calcCost()"><span>Chapter 3</span></label>
-                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN214-4" data-cost="20" onchange="calcCost()"><span>Chapter 4</span></label>
-                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN214-5" data-cost="20" onchange="calcCost()"><span>Chapter 5</span></label>
-                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN214-6" data-cost="20" onchange="calcCost()"><span>Chapter 6</span></label>
-                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN214-7" data-cost="20" onchange="calcCost()"><span>Chapter 7</span></label>
-                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN214-8" data-cost="20" onchange="calcCost()"><span>Chapter 8</span></label>
-                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN214-9" data-cost="20" onchange="calcCost()"><span>Chapter 9</span></label>
+                {% for n in [3,4,5,6,7,8,9] %}
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN214-{{ n }}" data-cost="20" onchange="calcCost()"><span>Chapter {{ n }}</span></label>
+                {% endfor %}
               </div>
             </div>
 
@@ -337,7 +439,6 @@
             <input type="hidden" name="totalCost" id="totalCostInput" value="0" />
           </div>
         </div>
-
         <div class="form-actions">
           <button type="submit" class="btn btn-primary">Share notes &amp; send email</button>
         </div>
@@ -347,7 +448,24 @@
 
 </div><!-- /page -->
 
+<!-- POP preview modal -->
+<div class="pop-overlay" id="popOverlay" onclick="closePop(event)">
+  <div class="pop-modal">
+    <div class="pop-modal-header">
+      <span class="pop-modal-title" id="popTitle">Proof of payment</span>
+      <button class="pop-modal-close" onclick="closePop()">&times;</button>
+    </div>
+    <div class="pop-modal-body" id="popBody">
+      <div class="pop-loading">Loading…</div>
+    </div>
+    <div class="pop-modal-footer">
+      <a class="btn-open-tab" id="popOpenTab" href="#" target="_blank" rel="noopener">Open in new tab</a>
+    </div>
+  </div>
+</div>
+
 <script>
+  // ── Chapter sections ──
   const chapterSections = {
     EKN110: document.getElementById('ekn110Chapters'),
     EKN120: document.getElementById('ekn120Chapters'),
@@ -355,16 +473,13 @@
   };
 
   function showChapters(module) {
-    // Uncheck all boxes in hidden sections
     Object.entries(chapterSections).forEach(([key, el]) => {
       if (key !== module) {
         el.classList.remove('active');
         el.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = false);
       }
     });
-    if (module && chapterSections[module]) {
-      chapterSections[module].classList.add('active');
-    }
+    if (module && chapterSections[module]) chapterSections[module].classList.add('active');
     calcCost();
   }
 
@@ -373,8 +488,7 @@
     let total = 0;
     checked.forEach(cb => { total += parseInt(cb.dataset.cost) || 0; });
     const display = document.getElementById('costDisplay');
-    const input = document.getElementById('totalCostInput');
-    input.value = total;
+    document.getElementById('totalCostInput').value = total;
     if (total > 0) {
       display.style.display = 'block';
       display.textContent = `Total: R${total}`;
@@ -383,31 +497,69 @@
     }
   }
 
+  // ── Reshare ──
   async function reshare(btn, submissionId) {
+    const original = btn.textContent;
     btn.disabled = true;
     btn.textContent = 'Sharing…';
     try {
       const res = await fetch(`/admin/reshare/${submissionId}`, { method: 'POST' });
       const data = await res.json();
       if (data.ok) {
-        const row = document.getElementById(`row-${submissionId}`);
-        const badge = row.querySelector('.status-badge');
+        const badge = document.getElementById(`badge-${submissionId}`);
         if (badge) {
           badge.className = 'status-badge status-approved';
           badge.textContent = 'approved';
         }
-        btn.replaceWith(document.createTextNode('Done'));
+        btn.disabled = false;
+        btn.className = 'btn btn-reshare-done';
+        btn.textContent = 'Reshare';
       } else {
         btn.disabled = false;
-        btn.textContent = 'Reshare';
+        btn.textContent = original;
         alert(`Reshare failed: ${data.error || 'unknown error'}`);
       }
     } catch (e) {
       btn.disabled = false;
-      btn.textContent = 'Reshare';
+      btn.textContent = original;
       alert(`Network error: ${e.message}`);
     }
   }
+
+  // ── POP preview ──
+  function openPop(submissionId, name) {
+    const url = `/admin/view-payment/${submissionId}`;
+    document.getElementById('popTitle').textContent = `Proof of payment — ${name}`;
+    document.getElementById('popOpenTab').href = url;
+    document.getElementById('popBody').innerHTML = '<div class="pop-loading">Loading…</div>';
+    document.getElementById('popOverlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+
+    // Try to detect type by fetching headers, then render accordingly
+    fetch(url, { method: 'HEAD' })
+      .then(res => {
+        if (!res.ok) throw new Error(res.status === 404 ? 'No file on record for this submission.' : `Server error ${res.status}`);
+        const ct = res.headers.get('content-type') || '';
+        const body = document.getElementById('popBody');
+        if (ct.startsWith('image/')) {
+          body.innerHTML = `<img src="${url}" alt="Proof of payment" />`;
+        } else {
+          body.innerHTML = `<iframe src="${url}" title="Proof of payment"></iframe>`;
+        }
+      })
+      .catch(err => {
+        document.getElementById('popBody').innerHTML = `<div class="pop-error">${err.message}</div>`;
+      });
+  }
+
+  function closePop(event) {
+    if (event && event.target !== document.getElementById('popOverlay') && !event.target.classList.contains('pop-modal-close')) return;
+    document.getElementById('popOverlay').classList.remove('open');
+    document.getElementById('popBody').innerHTML = '<div class="pop-loading">Loading…</div>';
+    document.body.style.overflow = '';
+  }
+
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closePop({}); });
 </script>
 
 </body>
