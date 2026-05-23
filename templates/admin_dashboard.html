@@ -54,7 +54,7 @@
     .banner-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
     .banner-error   { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
 
-    /* ── Cards ── */
+    /* ── Card ── */
     .card {
       background: #fff;
       border-radius: 14px;
@@ -70,29 +70,13 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 8px;
       flex-wrap: wrap;
+      gap: 8px;
     }
     .card-header-meta { font-size: 12px; font-weight: 400; color: #999; }
     .card-body { padding: 20px; }
 
-    /* ── Table ── */
-    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 640px; }
-    thead th {
-      text-align: left;
-      padding: 10px 12px;
-      background: #f8f9fa;
-      font-weight: 600;
-      color: #555;
-      border-bottom: 2px solid #eee;
-      white-space: nowrap;
-    }
-    tbody tr { border-bottom: 1px solid #f0f0f0; }
-    tbody tr:last-child { border-bottom: none; }
-    tbody tr:hover { background: #fafbff; }
-    tbody td { padding: 10px 12px; vertical-align: middle; }
-
+    /* ── Status badge ── */
     .status-badge {
       display: inline-block;
       padding: 3px 10px;
@@ -109,7 +93,7 @@
     /* ── Buttons ── */
     .btn {
       display: inline-block;
-      padding: 6px 12px;
+      padding: 7px 13px;
       border-radius: 7px;
       font-size: 12px;
       font-weight: 600;
@@ -118,13 +102,13 @@
       text-decoration: none;
       transition: opacity 0.15s;
       white-space: nowrap;
+      line-height: 1.4;
     }
     .btn:hover:not(:disabled) { opacity: 0.82; }
     .btn:disabled { cursor: not-allowed; opacity: 0.55; }
-
-    .btn-reshare         { background: #667eea; color: #fff; }
-    .btn-reshare-done    { background: transparent; color: #667eea; border: 1.5px solid #667eea; }
-    .btn-pop             { background: #f0f2ff; color: #667eea; border: 1.5px solid #c7cef7; }
+    .btn-reshare      { background: #667eea; color: #fff; }
+    .btn-reshare-done { background: transparent; color: #667eea; border: 1.5px solid #667eea; }
+    .btn-pop          { background: #f0f2ff; color: #667eea; border: 1.5px solid #c7cef7; }
     .btn-primary {
       background: linear-gradient(135deg, #667eea, #764ba2);
       color: #fff;
@@ -134,7 +118,96 @@
       width: 100%;
     }
 
-    .actions-cell { display: flex; gap: 6px; flex-wrap: wrap; }
+    /* ── Desktop table ── */
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th {
+      text-align: left;
+      padding: 10px 12px;
+      background: #f8f9fa;
+      font-weight: 600;
+      color: #555;
+      border-bottom: 2px solid #eee;
+      white-space: nowrap;
+    }
+    tbody tr { border-bottom: 1px solid #f0f0f0; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #fafbff; }
+    tbody td { padding: 10px 12px; vertical-align: middle; }
+    .actions-cell { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+    /* ── Mobile: stacked card layout ── */
+    @media (max-width: 680px) {
+      .table-wrap { overflow-x: visible; }
+      table, thead, tbody, tr, td { display: block; width: 100%; }
+      thead { display: none; }
+
+      tbody tr {
+        border: 1px solid #e9ecef;
+        border-radius: 12px;
+        margin-bottom: 12px;
+        padding: 14px;
+        background: #fff;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+      }
+      tbody tr:hover { background: #fafbff; }
+
+      tbody td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 5px 0;
+        border: none;
+        font-size: 13px;
+        gap: 8px;
+      }
+
+      /* Label shown before each cell value */
+      tbody td::before {
+        content: attr(data-label);
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        color: #999;
+        flex-shrink: 0;
+        min-width: 72px;
+      }
+
+      /* Top row: Name + Status side by side as a header */
+      tbody td.col-name {
+        font-size: 15px;
+        font-weight: 700;
+        border-bottom: 1px solid #f0f0f0;
+        padding-bottom: 10px;
+        margin-bottom: 4px;
+        justify-content: space-between;
+      }
+      tbody td.col-name::before { display: none; }
+
+      /* Hide lower-priority columns on very small screens — they're in the name row */
+      tbody td.col-date { color: #aaa; font-size: 11px; }
+
+      /* Actions: full-width buttons at the bottom */
+      tbody td.col-actions {
+        border-top: 1px solid #f0f0f0;
+        margin-top: 8px;
+        padding-top: 12px;
+        flex-direction: column;
+        gap: 8px;
+      }
+      tbody td.col-actions::before { display: none; }
+      tbody td.col-actions .actions-cell {
+        width: 100%;
+        gap: 8px;
+      }
+      tbody td.col-actions .btn {
+        flex: 1;
+        text-align: center;
+        padding: 11px 8px;
+        font-size: 13px;
+      }
+    }
 
     /* ── Direct share form ── */
     .form-grid {
@@ -180,14 +253,15 @@
     .chapter-label:hover { border-color: #667eea; background: #f5f6ff; }
     .chapter-label:has(input:checked) { border-color: #667eea; background: #f0f2ff; }
     .chapter-label input:checked + span { font-weight: 600; color: #667eea; }
-
-    .cost-display {
-      margin-top: 10px;
-      font-size: 14px;
-      color: #667eea;
-      font-weight: 600;
-    }
+    .cost-display { margin-top: 10px; font-size: 14px; color: #667eea; font-weight: 600; }
     .form-actions { margin-top: 20px; }
+
+    @media (max-width: 600px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .form-group.full { grid-column: 1; }
+      .chapters-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+      .card-body { padding: 16px; }
+    }
 
     /* ── POP modal ── */
     .pop-overlay {
@@ -219,79 +293,30 @@
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      flex-wrap: wrap;
     }
     .pop-modal-title { font-size: 14px; font-weight: 700; color: #333; }
     .pop-modal-close {
-      background: none;
-      border: none;
-      font-size: 22px;
-      cursor: pointer;
-      color: #999;
-      line-height: 1;
-      padding: 2px 6px;
-      border-radius: 6px;
+      background: none; border: none; font-size: 22px; cursor: pointer;
+      color: #999; line-height: 1; padding: 2px 6px; border-radius: 6px; flex-shrink: 0;
     }
     .pop-modal-close:hover { background: #f0f0f0; color: #333; }
     .pop-modal-body {
-      flex: 1;
-      overflow: auto;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #f8f9fa;
-      min-height: 200px;
+      flex: 1; overflow: auto; display: flex;
+      align-items: center; justify-content: center;
+      background: #f8f9fa; min-height: 200px;
     }
-    .pop-modal-body img {
-      max-width: 100%;
-      max-height: 70vh;
-      object-fit: contain;
-      display: block;
-    }
-    .pop-modal-body iframe {
-      width: 100%;
-      height: 70vh;
-      border: none;
-    }
-    .pop-modal-body .pop-loading,
-    .pop-modal-body .pop-error {
-      padding: 40px;
-      text-align: center;
-      color: #999;
-      font-size: 14px;
-    }
-    .pop-modal-body .pop-error { color: #721c24; }
-    .pop-modal-footer {
-      padding: 12px 18px;
-      border-top: 1px solid #eee;
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
+    .pop-modal-body img { max-width: 100%; max-height: 70vh; object-fit: contain; display: block; }
+    .pop-modal-body iframe { width: 100%; height: 70vh; border: none; }
+    .pop-loading, .pop-error { padding: 40px; text-align: center; color: #999; font-size: 14px; }
+    .pop-error { color: #721c24; }
+    .pop-modal-footer { padding: 12px 18px; border-top: 1px solid #eee; }
     .btn-open-tab {
-      background: #f0f2ff;
-      color: #667eea;
-      border: 1.5px solid #c7cef7;
-      padding: 8px 16px;
-      font-size: 13px;
-      font-weight: 600;
-      border-radius: 8px;
-      cursor: pointer;
-      text-decoration: none;
-      white-space: nowrap;
+      background: #f0f2ff; color: #667eea; border: 1.5px solid #c7cef7;
+      padding: 8px 16px; font-size: 13px; font-weight: 600; border-radius: 8px;
+      cursor: pointer; text-decoration: none; white-space: nowrap; display: inline-block;
     }
 
-    /* ── Empty state ── */
     .empty { padding: 40px; text-align: center; color: #aaa; font-size: 14px; }
-
-    /* ── Responsive ── */
-    @media (max-width: 600px) {
-      .form-grid { grid-template-columns: 1fr; }
-      .form-group.full { grid-column: 1; }
-      .btn-primary { font-size: 14px; padding: 12px 20px; }
-      .chapters-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
-      .card-body { padding: 16px; }
-    }
   </style>
 </head>
 <body>
@@ -306,12 +331,8 @@
 
 <div class="page">
 
-  {% if msg %}
-  <div class="banner banner-success">{{ msg }}</div>
-  {% endif %}
-  {% if err %}
-  <div class="banner banner-error">Error: {{ err }}</div>
-  {% endif %}
+  {% if msg %}<div class="banner banner-success">{{ msg }}</div>{% endif %}
+  {% if err %}<div class="banner banner-error">Error: {{ err }}</div>{% endif %}
 
   <!-- Submissions -->
   <div class="card">
@@ -338,33 +359,37 @@
           {% for s in submissions %}
           {% set is_approved = s.status | lower == 'approved' %}
           <tr id="row-{{ s.submission_id }}">
-            <td style="white-space:nowrap;color:#999;font-size:11px;">
+            <td class="col-date" data-label="Date">
               {{ s.timestamp[:10] if s.timestamp else '—' }}
             </td>
-            <td style="white-space:nowrap;">{{ s.name }}</td>
-            <td style="font-size:12px;word-break:break-all;">{{ s.email }}</td>
-            <td><strong>{{ s.module }}</strong></td>
-            <td style="font-size:12px;max-width:180px;">{{ s.chapters }}</td>
-            <td style="white-space:nowrap;">R{{ s.total_cost }}</td>
-            <td>
-              {% set st = s.status | lower if s.status else 'unknown' %}
-              <span class="status-badge status-{{ st if st in ['approved','pending','denied'] else 'unknown' }}" id="badge-{{ s.submission_id }}">
+            <td class="col-name" data-label="">
+              <span>{{ s.name }}</span>
+              <span class="status-badge status-{{ (s.status | lower) if s.status and (s.status | lower) in ['approved','pending','denied'] else 'unknown' }}" id="badge-{{ s.submission_id }}">
                 {{ s.status or 'unknown' }}
               </span>
             </td>
-            <td>
+            <td data-label="Email" style="font-size:12px;word-break:break-all;">{{ s.email }}</td>
+            <td data-label="Module"><strong>{{ s.module }}</strong></td>
+            <td data-label="Chapters" style="font-size:12px;">{{ s.chapters }}</td>
+            <td data-label="Cost">R{{ s.total_cost }}</td>
+            <td data-label="Status" class="desktop-status-col">
+              <span class="status-badge status-{{ (s.status | lower) if s.status and (s.status | lower) in ['approved','pending','denied'] else 'unknown' }}">
+                {{ s.status or 'unknown' }}
+              </span>
+            </td>
+            <td class="col-actions" data-label="Actions">
               <div class="actions-cell">
                 <button
                   class="btn {% if is_approved %}btn-reshare-done{% else %}btn-reshare{% endif %}"
                   id="reshare-btn-{{ s.submission_id }}"
                   onclick="reshare(this, '{{ s.submission_id }}')"
-                  title="{% if is_approved %}Reshare (already approved){% else %}Share notes &amp; send email{% endif %}"
-                >{% if is_approved %}Reshare{% else %}Reshare{% endif %}</button>
+                  title="{% if is_approved %}Reshare (already approved){% else %}Share &amp; email student{% endif %}"
+                >Reshare</button>
                 <button
                   class="btn btn-pop"
                   onclick="openPop('{{ s.submission_id }}', '{{ s.name }}')"
                   title="Preview proof of payment"
-                >POP</button>
+                >View POP</button>
               </div>
             </td>
           </tr>
@@ -410,31 +435,27 @@
           </div>
           <div class="form-group full">
             <label>Chapters *</label>
-
             <div id="ekn110Chapters" class="chapters-section">
               <div class="chapters-grid">
                 {% for n in range(1, 11) %}
-                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN110-{{ n }}" data-cost="15" onchange="calcCost()"><span>Chapter {{ n }}</span></label>
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN110-{{ n }}" data-cost="15" onchange="calcCost()"><span>Ch {{ n }}</span></label>
                 {% endfor %}
               </div>
             </div>
-
             <div id="ekn120Chapters" class="chapters-section">
               <div class="chapters-grid">
                 {% for n in range(11, 21) %}
-                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN120-{{ n }}" data-cost="15" onchange="calcCost()"><span>Chapter {{ n }}</span></label>
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN120-{{ n }}" data-cost="15" onchange="calcCost()"><span>Ch {{ n }}</span></label>
                 {% endfor %}
               </div>
             </div>
-
             <div id="ekn214Chapters" class="chapters-section">
               <div class="chapters-grid">
                 {% for n in [3,4,5,6,7,8,9] %}
-                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN214-{{ n }}" data-cost="20" onchange="calcCost()"><span>Chapter {{ n }}</span></label>
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN214-{{ n }}" data-cost="20" onchange="calcCost()"><span>Ch {{ n }}</span></label>
                 {% endfor %}
               </div>
             </div>
-
             <div id="costDisplay" class="cost-display" style="display:none;"></div>
             <input type="hidden" name="totalCost" id="totalCostInput" value="0" />
           </div>
@@ -446,9 +467,9 @@
     </div>
   </div>
 
-</div><!-- /page -->
+</div>
 
-<!-- POP preview modal -->
+<!-- POP modal -->
 <div class="pop-overlay" id="popOverlay" onclick="closePop(event)">
   <div class="pop-modal">
     <div class="pop-modal-header">
@@ -464,8 +485,14 @@
   </div>
 </div>
 
+<style>
+  /* Hide the duplicate desktop status column on mobile (we show it in col-name) */
+  @media (max-width: 680px) {
+    .desktop-status-col { display: none !important; }
+  }
+</style>
+
 <script>
-  // ── Chapter sections ──
   const chapterSections = {
     EKN110: document.getElementById('ekn110Chapters'),
     EKN120: document.getElementById('ekn120Chapters'),
@@ -489,15 +516,10 @@
     checked.forEach(cb => { total += parseInt(cb.dataset.cost) || 0; });
     const display = document.getElementById('costDisplay');
     document.getElementById('totalCostInput').value = total;
-    if (total > 0) {
-      display.style.display = 'block';
-      display.textContent = `Total: R${total}`;
-    } else {
-      display.style.display = 'none';
-    }
+    display.style.display = total > 0 ? 'block' : 'none';
+    display.textContent = total > 0 ? `Total: R${total}` : '';
   }
 
-  // ── Reshare ──
   async function reshare(btn, submissionId) {
     const original = btn.textContent;
     btn.disabled = true;
@@ -506,11 +528,10 @@
       const res = await fetch(`/admin/reshare/${submissionId}`, { method: 'POST' });
       const data = await res.json();
       if (data.ok) {
-        const badge = document.getElementById(`badge-${submissionId}`);
-        if (badge) {
+        document.querySelectorAll(`#badge-${submissionId}`).forEach(badge => {
           badge.className = 'status-badge status-approved';
           badge.textContent = 'approved';
-        }
+        });
         btn.disabled = false;
         btn.className = 'btn btn-reshare-done';
         btn.textContent = 'Reshare';
@@ -526,7 +547,6 @@
     }
   }
 
-  // ── POP preview ──
   function openPop(submissionId, name) {
     const url = `/admin/view-payment/${submissionId}`;
     document.getElementById('popTitle').textContent = `Proof of payment — ${name}`;
@@ -535,17 +555,14 @@
     document.getElementById('popOverlay').classList.add('open');
     document.body.style.overflow = 'hidden';
 
-    // Try to detect type by fetching headers, then render accordingly
     fetch(url, { method: 'HEAD' })
       .then(res => {
-        if (!res.ok) throw new Error(res.status === 404 ? 'No file on record for this submission.' : `Server error ${res.status}`);
+        if (!res.ok) throw new Error(res.status === 404 ? 'No proof of payment on file for this submission.' : `Server error ${res.status}`);
         const ct = res.headers.get('content-type') || '';
         const body = document.getElementById('popBody');
-        if (ct.startsWith('image/')) {
-          body.innerHTML = `<img src="${url}" alt="Proof of payment" />`;
-        } else {
-          body.innerHTML = `<iframe src="${url}" title="Proof of payment"></iframe>`;
-        }
+        body.innerHTML = ct.startsWith('image/')
+          ? `<img src="${url}" alt="Proof of payment" />`
+          : `<iframe src="${url}" title="Proof of payment"></iframe>`;
       })
       .catch(err => {
         document.getElementById('popBody').innerHTML = `<div class="pop-error">${err.message}</div>`;
@@ -553,13 +570,13 @@
   }
 
   function closePop(event) {
-    if (event && event.target !== document.getElementById('popOverlay') && !event.target.classList.contains('pop-modal-close')) return;
+    if (event && event.target !== document.getElementById('popOverlay') && !event.currentTarget.classList?.contains('pop-modal-close')) return;
     document.getElementById('popOverlay').classList.remove('open');
     document.getElementById('popBody').innerHTML = '<div class="pop-loading">Loading…</div>';
     document.body.style.overflow = '';
   }
 
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closePop({}); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { document.getElementById('popOverlay').classList.remove('open'); document.body.style.overflow = ''; } });
 </script>
 
 </body>
