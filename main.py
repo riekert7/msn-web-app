@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
 import sentry_sdk
-from flask import Flask, jsonify, render_template, request, Response
+from flask import Flask, jsonify, render_template, request
 from sentry_sdk.integrations.flask import FlaskIntegration
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s [%(name)s] %(message)s")
@@ -22,7 +22,6 @@ from email_utils import (
 )
 from sheets import log_to_google_sheets, update_google_sheets_status
 from storage import (
-    get_file_from_gcs,
     get_submission_data,
     store_file_in_gcs,
     store_submission_metadata,
@@ -125,7 +124,13 @@ def submit():
         store_submission_metadata(submission_data)
         log_to_google_sheets(submission_data)
 
-        _executor.submit(send_submission_emails_in_background, submission_data)
+        _executor.submit(
+            send_submission_emails_in_background,
+            submission_data,
+            file_data,
+            file.filename or "proof",
+            file.content_type or "application/octet-stream",
+        )
 
         return jsonify({
             "success": True,
@@ -211,32 +216,6 @@ def deny(submission_id: str):
     except Exception as e:
         logger.error("Deny error for %s: %s", submission_id, e)
         return render_template("action_message.html", title="Error", message=f"Something went wrong: {e}"), 500
-
-
-# ---------------------------------------------------------------------------
-# View proof of payment (admin only, token-protected)
-# ---------------------------------------------------------------------------
-
-@app.get("/view-payment/<submission_id>")
-def view_payment(submission_id: str):
-    token = request.args.get("token")
-    if not verify_approval_token(submission_id, token or ""):
-        return "Invalid or expired link", 403
-    try:
-        data = get_submission_data(submission_id)
-        gcs_path = data.get("gcs_file_path")
-        if not gcs_path:
-            return "File not found", 404
-        file_data, content_type = get_file_from_gcs(gcs_path)
-        filename = data.get("file_name", "proof")
-        return Response(
-            file_data,
-            mimetype=content_type,
-            headers={"Content-Disposition": f"inline; filename=\"{filename}\""},
-        )
-    except Exception as e:
-        logger.error("view_payment error for %s: %s", submission_id, e)
-        return "Error retrieving file", 500
 
 
 # ---------------------------------------------------------------------------

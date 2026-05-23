@@ -53,14 +53,6 @@ def get_submission_data(submission_id: str) -> dict:
     return json.loads(blob.download_as_text())
 
 
-def get_file_from_gcs(gcs_path: str) -> tuple[bytes, str]:
-    """Download a file from GCS. Returns (data, content_type)."""
-    bucket = storage_client.bucket(bucket_name)
-    blob = bucket.blob(gcs_path)
-    blob.reload()
-    return blob.download_as_bytes(), blob.content_type or "application/octet-stream"
-
-
 def update_submission_status(submission_id: str, status: str, extra: dict | None = None) -> dict:
     """Update status (and optional extra fields) in the GCS metadata JSON."""
     data = get_submission_data(submission_id)
