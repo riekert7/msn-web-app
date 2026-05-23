@@ -1,0 +1,491 @@
+{% extends "admin_base.html" %}
+{% block title %}Submissions{% endblock %}
+
+{% block extra_styles %}
+  /* ── Controls bar ── */
+  .controls-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .search-wrap { position: relative; flex: 1; min-width: 200px; }
+  .search-icon {
+    position: absolute;
+    left: 10px; top: 50%;
+    transform: translateY(-50%);
+    font-size: 14px;
+    color: #aaa;
+    pointer-events: none;
+  }
+  .search-input {
+    width: 100%;
+    padding: 9px 12px 9px 32px;
+    border: 1.5px solid #ddd;
+    border-radius: 8px;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-input:focus { border-color: #667eea; }
+
+  .filter-select {
+    padding: 9px 12px;
+    border: 1.5px solid #ddd;
+    border-radius: 8px;
+    font-size: 13px;
+    background: #fff;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .filter-select:focus { border-color: #667eea; }
+
+  .clear-btn {
+    padding: 9px 14px;
+    border: 1.5px solid #ddd;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    background: #fff;
+    color: #666;
+    cursor: pointer;
+    white-space: nowrap;
+    display: none;
+  }
+  .clear-btn:hover { border-color: #667eea; color: #667eea; }
+  .clear-btn.visible { display: inline-block; }
+
+  /* ── Summary + pagination footer ── */
+  .table-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 14px 20px;
+    border-top: 1px solid #f0f0f0;
+    font-size: 13px;
+    color: #777;
+  }
+  .pagination {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .page-btn {
+    min-width: 34px;
+    height: 34px;
+    padding: 0 8px;
+    border: 1.5px solid #ddd;
+    border-radius: 7px;
+    background: #fff;
+    font-size: 13px;
+    font-weight: 500;
+    color: #555;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .page-btn:hover:not(:disabled) { border-color: #667eea; color: #667eea; }
+  .page-btn.active { background: #667eea; border-color: #667eea; color: #fff; font-weight: 700; }
+  .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .page-ellipsis { color: #aaa; padding: 0 4px; font-size: 13px; line-height: 34px; }
+
+  .no-results {
+    padding: 48px 20px;
+    text-align: center;
+    color: #aaa;
+    font-size: 14px;
+  }
+  .no-results-icon { font-size: 32px; margin-bottom: 10px; }
+
+  @media (max-width: 600px) {
+    .controls-bar { gap: 8px; }
+    .search-wrap { min-width: 100%; flex: none; width: 100%; }
+    .filter-select { flex: 1; }
+    .table-footer { flex-direction: column; align-items: flex-start; gap: 8px; }
+  }
+{% endblock %}
+
+{% block content %}
+<div class="page">
+
+  {% if msg %}<div class="banner banner-success">{{ msg }}</div>{% endif %}
+  {% if err %}<div class="banner banner-error">Error: {{ err }}</div>{% endif %}
+
+  <!-- Controls -->
+  <div class="controls-bar">
+    <div class="search-wrap">
+      <span class="search-icon">&#128269;</span>
+      <input
+        type="text"
+        id="searchInput"
+        class="search-input"
+        placeholder="Search name, email, ID…"
+        autocomplete="off"
+        spellcheck="false"
+      />
+    </div>
+    <select id="moduleFilter" class="filter-select">
+      <option value="">All modules</option>
+      <option value="EKN110">EKN110</option>
+      <option value="EKN120">EKN120</option>
+      <option value="EKN214">EKN214</option>
+    </select>
+    <select id="statusFilter" class="filter-select">
+      <option value="">All statuses</option>
+      <option value="pending">Pending</option>
+      <option value="approved">Approved</option>
+      <option value="denied">Denied</option>
+    </select>
+    <button id="clearBtn" class="clear-btn" type="button">&#10005; Clear</button>
+  </div>
+
+  <!-- Submissions table -->
+  <div class="card">
+    <div id="tableWrap" class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="sortable" data-sort-key="timestamp">Date <span class="sort-icon" id="sort-icon-timestamp">&#9663;</span></th>
+            <th class="sortable" data-sort-key="name">Name <span class="sort-icon" id="sort-icon-name"></span></th>
+            <th>Email</th>
+            <th class="sortable" data-sort-key="module">Module <span class="sort-icon" id="sort-icon-module"></span></th>
+            <th>Chapters</th>
+            <th class="sortable" data-sort-key="total_cost">Cost <span class="sort-icon" id="sort-icon-total_cost"></span></th>
+            <th class="sortable desktop-status-col" data-sort-key="status">Status <span class="sort-icon" id="sort-icon-status"></span></th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="submissionsBody"></tbody>
+      </table>
+      <div id="noResults" class="no-results" style="display:none;">
+        <div class="no-results-icon">&#128269;</div>
+        No submissions match your filters.
+      </div>
+    </div>
+    <div class="table-footer">
+      <span id="summaryText"></span>
+      <div id="pagination" class="pagination"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Submissions data for JS -->
+<script id="submissions-data" type="application/json">{{ submissions | tojson }}</script>
+{% endblock %}
+
+{% block scripts %}
+  const allRows = JSON.parse(document.getElementById('submissions-data').textContent);
+
+  const state = {
+    query: '',
+    module: '',
+    status: '',
+    sortKey: 'timestamp',
+    sortDir: -1,
+    page: 1,
+    pageSize: 25,
+  };
+
+  // ── Init from URL params ──
+  (function initFromUrl() {
+    const p = new URLSearchParams(window.location.search);
+    if (p.get('q'))      state.query  = p.get('q');
+    if (p.get('module')) state.module = p.get('module');
+    if (p.get('status')) state.status = p.get('status');
+    if (p.get('page'))   state.page   = Math.max(1, parseInt(p.get('page')) || 1);
+    document.getElementById('searchInput').value   = state.query;
+    document.getElementById('moduleFilter').value  = state.module;
+    document.getElementById('statusFilter').value  = state.status;
+  })();
+
+  // ── Filter / sort helpers ──
+  function rowMatchesQuery(row, q) {
+    if (!q) return true;
+    const lower = q.toLowerCase();
+    return (
+      (row.name || '').toLowerCase().includes(lower) ||
+      (row.email || '').toLowerCase().includes(lower) ||
+      (row.submission_id || '').toLowerCase().includes(lower)
+    );
+  }
+
+  function applyFilters(rows) {
+    return rows.filter(r =>
+      rowMatchesQuery(r, state.query) &&
+      (!state.module || r.module === state.module) &&
+      (!state.status || (r.status || '').toLowerCase() === state.status)
+    );
+  }
+
+  function applySort(rows) {
+    const key = state.sortKey;
+    const dir = state.sortDir;
+    return [...rows].sort((a, b) => {
+      let va = a[key] ?? '', vb = b[key] ?? '';
+      if (key === 'total_cost') return dir * (Number(va) - Number(vb));
+      return dir * String(va).localeCompare(String(vb), undefined, { numeric: true });
+    });
+  }
+
+  // ── Row HTML builder ──
+  function statusClass(s) {
+    const low = (s || '').toLowerCase();
+    return ['approved','pending','denied'].includes(low) ? `status-${low}` : 'status-unknown';
+  }
+
+  function buildRow(s) {
+    const status = (s.status || '').toLowerCase();
+    const isPending  = status === 'pending' || status === '' || status === 'unknown';
+    const isApproved = status === 'approved';
+    const dateStr = s.timestamp ? s.timestamp.slice(0, 10) : '—';
+    const badgeClass = statusClass(s.status);
+    const safeId = (s.submission_id || '').replace(/[^a-zA-Z0-9-]/g, '');
+    const safeName = (s.name || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+    let actionButtons;
+    if (isPending) {
+      actionButtons =
+        `<button class="btn btn-approve" onclick="approve(this,'${safeId}')" title="Share notes &amp; email student">Approve</button>` +
+        `<button class="btn btn-deny"    onclick="deny(this,'${safeId}')"    title="Deny request">Deny</button>`;
+    } else {
+      const reshareClass = isApproved ? 'btn-reshare-done' : 'btn-reshare';
+      actionButtons =
+        `<button class="btn ${reshareClass}" onclick="approve(this,'${safeId}')" title="Reshare">Reshare</button>`;
+    }
+    actionButtons +=
+      `<button class="btn btn-pop" onclick="openPop('${safeId}','${safeName}')" title="Preview proof of payment">View POP</button>`;
+
+    return `<tr id="row-${safeId}">
+      <td class="col-date" data-label="Date">${dateStr}</td>
+      <td class="col-name" data-label="">
+        <span>${s.name || '—'}</span>
+        <span class="${badgeClass} status-badge" id="badge-${safeId}">${s.status || 'unknown'}</span>
+      </td>
+      <td data-label="Email" style="font-size:12px;word-break:break-all;">${s.email || '—'}</td>
+      <td data-label="Module"><strong>${s.module || '—'}</strong></td>
+      <td data-label="Chapters" style="font-size:12px;">${s.chapters || '—'}</td>
+      <td data-label="Cost">R${s.total_cost || 0}</td>
+      <td data-label="Status" class="desktop-status-col">
+        <span class="${badgeClass} status-badge">${s.status || 'unknown'}</span>
+      </td>
+      <td class="col-actions" data-label="Actions">
+        <div class="actions-cell" id="actions-${safeId}">${actionButtons}</div>
+      </td>
+    </tr>`;
+  }
+
+  // ── Render functions ──
+  function renderRows(rows) {
+    const tbody = document.getElementById('submissionsBody');
+    const noResults = document.getElementById('noResults');
+    if (rows.length === 0) {
+      tbody.innerHTML = '';
+      noResults.style.display = 'block';
+    } else {
+      tbody.innerHTML = rows.map(buildRow).join('');
+      noResults.style.display = 'none';
+    }
+  }
+
+  function renderSummary(filteredTotal) {
+    const start = Math.min((state.page - 1) * state.pageSize + 1, filteredTotal);
+    const end   = Math.min(state.page * state.pageSize, filteredTotal);
+    const total = allRows.length;
+    let text = filteredTotal === 0
+      ? 'No results'
+      : `Showing ${start}–${end} of ${filteredTotal}`;
+    if (state.query || state.module || state.status) {
+      text += ` (filtered from ${total} total)`;
+    }
+    document.getElementById('summaryText').textContent = text;
+  }
+
+  function renderPagination(filteredTotal) {
+    const totalPages = Math.max(1, Math.ceil(filteredTotal / state.pageSize));
+    const cur = state.page;
+    const container = document.getElementById('pagination');
+
+    if (totalPages <= 1) { container.innerHTML = ''; return; }
+
+    const pages = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (cur > 3) pages.push('…');
+      for (let i = Math.max(2, cur - 1); i <= Math.min(totalPages - 1, cur + 1); i++) pages.push(i);
+      if (cur < totalPages - 2) pages.push('…');
+      pages.push(totalPages);
+    }
+
+    let html = `<button class="page-btn" ${cur === 1 ? 'disabled' : ''} onclick="goPage(${cur - 1})">&#8592;</button>`;
+    for (const p of pages) {
+      if (p === '…') {
+        html += `<span class="page-ellipsis">…</span>`;
+      } else {
+        html += `<button class="page-btn ${p === cur ? 'active' : ''}" onclick="goPage(${p})">${p}</button>`;
+      }
+    }
+    html += `<button class="page-btn" ${cur === totalPages ? 'disabled' : ''} onclick="goPage(${cur + 1})">&#8594;</button>`;
+    container.innerHTML = html;
+  }
+
+  function renderSortIcons() {
+    document.querySelectorAll('thead th[data-sort-key]').forEach(th => {
+      const key = th.dataset.sortKey;
+      const icon = document.getElementById(`sort-icon-${key}`);
+      if (!icon) return;
+      th.classList.toggle('sort-active', key === state.sortKey);
+      if (key === state.sortKey) {
+        icon.textContent = state.sortDir === -1 ? ' ▼' : ' ▲';
+        icon.style.opacity = '1';
+      } else {
+        icon.textContent = ' ⇅';
+        icon.style.opacity = '0.35';
+      }
+    });
+  }
+
+  function renderClearButton() {
+    const btn = document.getElementById('clearBtn');
+    const active = state.query || state.module || state.status;
+    btn.classList.toggle('visible', !!active);
+  }
+
+  function syncUrl() {
+    const p = new URLSearchParams();
+    if (state.query)  p.set('q', state.query);
+    if (state.module) p.set('module', state.module);
+    if (state.status) p.set('status', state.status);
+    if (state.page > 1) p.set('page', state.page);
+    const qs = p.toString();
+    history.replaceState(null, '', qs ? '?' + qs : window.location.pathname);
+  }
+
+  // ── Main render pipeline ──
+  function render() {
+    const filtered = applyFilters(allRows);
+    const sorted   = applySort(filtered);
+    const paged    = sorted.slice((state.page - 1) * state.pageSize, state.page * state.pageSize);
+    renderRows(paged);
+    renderSummary(filtered.length);
+    renderPagination(filtered.length);
+    renderSortIcons();
+    renderClearButton();
+    syncUrl();
+  }
+
+  function setState(patch) {
+    const filterKeys = ['query', 'module', 'status'];
+    if (filterKeys.some(k => k in patch)) patch.page = 1;
+    Object.assign(state, patch);
+    render();
+  }
+
+  function goPage(n) { setState({ page: n }); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+
+  // ── Wire controls ──
+  document.getElementById('searchInput').addEventListener('input', e => {
+    setState({ query: e.target.value });
+  });
+  document.getElementById('moduleFilter').addEventListener('change', e => {
+    setState({ module: e.target.value });
+  });
+  document.getElementById('statusFilter').addEventListener('change', e => {
+    setState({ status: e.target.value });
+  });
+  document.getElementById('clearBtn').addEventListener('click', () => {
+    document.getElementById('searchInput').value  = '';
+    document.getElementById('moduleFilter').value = '';
+    document.getElementById('statusFilter').value = '';
+    setState({ query: '', module: '', status: '' });
+  });
+
+  // ── Sortable headers ──
+  document.querySelectorAll('thead th.sortable').forEach(th => {
+    th.addEventListener('click', () => {
+      const key = th.dataset.sortKey;
+      setState({
+        sortKey: key,
+        sortDir: state.sortKey === key ? -state.sortDir : -1,
+      });
+    });
+  });
+
+  // ── Approve / Reshare (AJAX) ──
+  async function approve(btn, submissionId) {
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Sharing…';
+    try {
+      const res = await fetch(`/admin/reshare/${submissionId}`, { method: 'POST' });
+      const data = await res.json();
+      if (data.ok) {
+        document.querySelectorAll(`#badge-${submissionId}`).forEach(badge => {
+          badge.className = 'status-badge status-approved';
+          badge.textContent = 'approved';
+        });
+        const actionsCell = document.getElementById(`actions-${submissionId}`);
+        if (actionsCell) {
+          actionsCell.innerHTML =
+            `<button class="btn btn-reshare-done" onclick="approve(this,'${submissionId}')" title="Reshare">Reshare</button>` +
+            `<button class="btn btn-pop" onclick="openPop('${submissionId}','')" title="Preview proof of payment">View POP</button>`;
+        }
+        const row = allRows.find(r => r.submission_id === submissionId);
+        if (row) row.status = 'approved';
+      } else {
+        btn.disabled = false;
+        btn.textContent = original;
+        alert(`Failed: ${data.error || 'unknown error'}`);
+      }
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = original;
+      alert(`Network error: ${e.message}`);
+    }
+  }
+
+  // ── Deny (AJAX) ──
+  async function deny(btn, submissionId) {
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Denying…';
+    try {
+      const res = await fetch(`/admin/deny/${submissionId}`, { method: 'POST' });
+      const data = await res.json();
+      if (data.ok) {
+        document.querySelectorAll(`#badge-${submissionId}`).forEach(badge => {
+          badge.className = 'status-badge status-denied';
+          badge.textContent = 'denied';
+        });
+        const actionsCell = document.getElementById(`actions-${submissionId}`);
+        if (actionsCell) {
+          actionsCell.innerHTML =
+            `<button class="btn btn-reshare" onclick="approve(this,'${submissionId}')" title="Reshare">Reshare</button>` +
+            `<button class="btn btn-pop" onclick="openPop('${submissionId}','')" title="Preview proof of payment">View POP</button>`;
+        }
+        const row = allRows.find(r => r.submission_id === submissionId);
+        if (row) row.status = 'denied';
+      } else {
+        btn.disabled = false;
+        btn.textContent = original;
+        alert(`Deny failed: ${data.error || 'unknown error'}`);
+      }
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = original;
+      alert(`Network error: ${e.message}`);
+    }
+  }
+
+  // ── Initial render ──
+  render();
+{% endblock %}

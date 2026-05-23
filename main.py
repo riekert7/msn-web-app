@@ -4,16 +4,13 @@ import logging
 import os
 import uuid
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from functools import wraps
 
 import sentry_sdk
 from authlib.integrations.flask_client import OAuth
 from flask import Flask, Response, jsonify, redirect, render_template, request, session, url_for
 from sentry_sdk.integrations.flask import FlaskIntegration
-
-logging.basicConfig(level=logging.INFO, format="%(levelname)s [%(name)s] %(message)s")
-logger = logging.getLogger(__name__)
 
 from drive import share_study_materials
 from email_utils import (
@@ -30,6 +27,9 @@ from storage import (
     store_submission_metadata,
     update_submission_status,
 )
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s [%(name)s] %(message)s")
+logger = logging.getLogger(__name__)
 
 sentry_sdk.init(
     dsn=os.environ.get("SENTRY_DSN"),
@@ -143,7 +143,7 @@ def submit():
             "file_name": file.filename,
             "file_size": round(len(file_data) / 1024 / 1024, 2),
             "file_mime_type": file.content_type,
-            "timestamp": request.form.get("timestamp", datetime.now(timezone.utc).isoformat()),
+            "timestamp": request.form.get("timestamp", datetime.now(UTC).isoformat()),
             "status": "pending",
             "gcs_file_path": None,
         }
@@ -154,13 +154,7 @@ def submit():
         store_submission_metadata(submission_data)
         log_to_google_sheets(submission_data)
 
-        _executor.submit(
-            send_submission_emails_in_background,
-            submission_data,
-            file_data,
-            file.filename or "proof",
-            file.content_type or "application/octet-stream",
-        )
+        _executor.submit(send_submission_emails_in_background, submission_data)
 
         return jsonify({
             "success": True,
@@ -310,7 +304,7 @@ def admin_callback():
             return render_template("action_message.html", title="Access denied", message="Your Google account is not authorised as an admin."), 403
         session["admin_email"] = email
         session["admin_name"] = user_info.get("name", email)
-        return redirect(url_for("admin_dashboard"))
+        return redirect(url_for("admin_submissions"))
     except Exception as e:
         logger.error("OAuth callback error: %s", e)
         return render_template("action_message.html", title="Login error", message=f"Something went wrong during login: {e}"), 500
@@ -325,17 +319,53 @@ def admin_logout():
 @app.get("/admin")
 @require_admin
 def admin_dashboard():
+    return redirect(url_for("admin_submissions"))
+
+
+@app.get("/admin/submissions")
+@require_admin
+def admin_submissions():
     submissions = get_all_submissions()
-    msg = request.args.get("msg")
-    err = request.args.get("err")
+    pending_count = sum(1 for s in submissions if (s.get("status") or "").lower() == "pending")
     return render_template(
-        "admin_dashboard.html",
+        "admin_submissions.html",
         submissions=submissions,
+        pending_count=pending_count,
         admin_email=session.get("admin_email"),
         admin_name=session.get("admin_name"),
-        msg=msg,
-        err=err,
+        msg=request.args.get("msg"),
+        err=request.args.get("err"),
+        active_tab="submissions",
     )
+
+
+@app.get("/admin/share")
+@require_admin
+def admin_share_page():
+    return render_template(
+        "admin_share.html",
+        pending_count=None,
+        admin_email=session.get("admin_email"),
+        admin_name=session.get("admin_name"),
+        msg=request.args.get("msg"),
+        err=request.args.get("err"),
+        active_tab="share",
+    )
+
+
+@app.post("/admin/deny/<submission_id>")
+@require_admin
+def admin_deny(submission_id: str):
+    try:
+        data = get_submission_data(submission_id)
+        update_submission_status(submission_id, "denied")
+        update_google_sheets_status(submission_id, "denied")
+        send_student_denied_email(data)
+        logger.info("Admin denied %s for %s", submission_id, data["email"])
+        return jsonify({"ok": True})
+    except Exception as e:
+        logger.error("Deny error for %s: %s", submission_id, e)
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 @app.post("/admin/reshare/<submission_id>")
@@ -367,10 +397,10 @@ def admin_share():
         total_cost = int(request.form.get("totalCost", 0))
 
         if not all((first_name, last_name, email, module, chapters)):
-            return redirect(url_for("admin_dashboard", err="Missing required fields"))
+            return redirect(url_for("admin_share_page", err="Missing required fields"))
 
         submission_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         submission_data = {
             "submission_id": submission_id,
             "first_name": first_name,
@@ -397,12 +427,12 @@ def admin_share():
         update_google_sheets_status(submission_id, "approved")
 
         logger.info("Admin direct-shared %s %s chapters with %s", module, chapters, email)
-        return redirect(url_for("admin_dashboard", msg=f"Shared {len(shared)} file(s) with {email}"))
+        return redirect(url_for("admin_share_page", msg=f"Shared {len(shared)} file(s) with {email}"))
 
     except Exception as e:
         sentry_sdk.capture_exception(e)
         logger.error("Admin share error: %s", e)
-        return redirect(url_for("admin_dashboard", err=str(e)))
+        return redirect(url_for("admin_share_page", err=str(e)))
 
 
 # ---------------------------------------------------------------------------
@@ -411,7 +441,7 @@ def admin_share():
 
 @app.get("/healthz")
 def healthz():
-    return jsonify({"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat(), "service": "webapp"})
+    return jsonify({"status": "healthy", "timestamp": datetime.now(UTC).isoformat(), "service": "webapp"})
 
 
 # ---------------------------------------------------------------------------
@@ -426,7 +456,6 @@ def debug_sentry():
 @app.get("/debug-smtp")
 def debug_smtp():
     import socket
-    from datetime import datetime, timezone
 
     host = os.environ.get("SMTP_HOST", "")
     port = int(os.environ.get("SMTP_PORT", "587"))
@@ -474,8 +503,8 @@ def debug_smtp():
                 result["cert_subject"] = dict(x[0] for x in cert.get("subject", []))
                 result["cert_expiry"] = not_after
                 if not_after:
-                    expiry_dt = datetime.strptime(not_after, "%b %d %H:%M:%S %Y %Z").replace(tzinfo=timezone.utc)
-                    result["cert_expired"] = expiry_dt < datetime.now(timezone.utc)
+                    expiry_dt = datetime.strptime(not_after, "%b %d %H:%M:%S %Y %Z").replace(tzinfo=UTC)
+                    result["cert_expired"] = expiry_dt < datetime.now(UTC)
     except _ssl.SSLCertVerificationError as e:
         result["starttls"] = False
         result["error"] = f"SSL cert verification failed: {e}"
@@ -491,9 +520,9 @@ def debug_smtp():
                     result["cert_subject"] = dict(x[0] for x in cert.get("subject", []))
                     result["cert_expiry"] = not_after
                     if not_after:
-                        expiry_dt = datetime.strptime(not_after, "%b %d %H:%M:%S %Y %Z").replace(tzinfo=timezone.utc)
-                        result["cert_expired"] = expiry_dt < datetime.now(timezone.utc)
-        except Exception:
+                        expiry_dt = datetime.strptime(not_after, "%b %d %H:%M:%S %Y %Z").replace(tzinfo=UTC)
+                        result["cert_expired"] = expiry_dt < datetime.now(UTC)
+        except Exception:  # nosec B110
             pass
         return jsonify(result), 500
     except Exception as e:

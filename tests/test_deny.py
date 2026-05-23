@@ -4,7 +4,6 @@ from unittest.mock import patch
 
 from tests.conftest import make_approval_token
 
-
 SID = "test-sub-001"
 
 

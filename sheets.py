@@ -1,7 +1,7 @@
 import logging
 import os
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from google.auth import default
 from googleapiclient.discovery import build
@@ -108,7 +108,7 @@ def update_google_sheets_status(submission_id: str, status: str, admin_action: d
             logger.error("submission_id=%s not found; cannot update", submission_id)
             return False
 
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         _get_service().spreadsheets().values().batchUpdate(
             spreadsheetId=sheets_id,
             body={

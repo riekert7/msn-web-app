@@ -28,7 +28,8 @@ _storage_patcher = patch("google.cloud.storage.Client")
 _storage_patcher.start()
 
 import pytest  # noqa: E402
-import main    # noqa: E402
+
+import main  # noqa: E402
 
 
 @pytest.fixture

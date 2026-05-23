@@ -1,7 +1,7 @@
 import json
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from google.cloud import storage
 from werkzeug.utils import secure_filename
@@ -22,7 +22,7 @@ def store_file_in_gcs(file_data: bytes, filename: str, submission_id: str, conte
         blob.metadata = {
             "submission_id": submission_id,
             "original_name": filename,
-            "uploaded_at": datetime.now(timezone.utc).isoformat(),
+            "uploaded_at": datetime.now(UTC).isoformat(),
         }
         blob.upload_from_string(file_data, content_type=content_type)
         logger.info("Uploaded %s", path)
@@ -65,7 +65,7 @@ def update_submission_status(submission_id: str, status: str, extra: dict | None
     """Update status (and optional extra fields) in the GCS metadata JSON."""
     data = get_submission_data(submission_id)
     data["status"] = status
-    data["processed_at"] = datetime.now(timezone.utc).isoformat()
+    data["processed_at"] = datetime.now(UTC).isoformat()
     if extra:
         data["admin_action"] = extra
     bucket = storage_client.bucket(bucket_name)
