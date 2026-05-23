@@ -4,24 +4,28 @@ on:
   push:
     branches:
       - main
+      - develop
 
 permissions:
   contents: read
   id-token: write
 
-env:
-  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
-  REGION: ${{ vars.CLOUD_RUN_REGION }}
-  SERVICE: msn-web-app
-
 jobs:
-  deploy:
+  # -----------------------------------------------------------------------
+  # Production — push to main
+  # -----------------------------------------------------------------------
+  deploy-prod:
+    if: github.ref == 'refs/heads/main'
     environment: prod
     runs-on: ubuntu-latest
 
+    env:
+      PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      REGION: ${{ vars.CLOUD_RUN_REGION }}
+      SERVICE: msn-web-app
+
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -29,16 +33,12 @@ jobs:
           workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: miyastudynotes-sa@miya-study-notes.iam.gserviceaccount.com
 
-      - name: Set up gcloud SDK
-        uses: google-github-actions/setup-gcloud@v2
+      - uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ env.PROJECT_ID }}
 
-      - name: Build and push container image (Cloud Build)
-        run: |
-          gcloud builds submit \
-            --project "$PROJECT_ID" \
-            --tag "gcr.io/$PROJECT_ID/$SERVICE"
+      - name: Build and push image
+        run: gcloud builds submit --project "$PROJECT_ID" --tag "gcr.io/$PROJECT_ID/$SERVICE"
 
       - name: Deploy to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
@@ -64,3 +64,77 @@ jobs:
             SMTP_USERNAME=${{ secrets.SMTP_USERNAME }}
             SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
             APPROVAL_SECRET=${{ secrets.APPROVAL_SECRET }}
+            SENTRY_DSN=${{ secrets.SENTRY_DSN }}
+
+  # -----------------------------------------------------------------------
+  # Dev — push to develop (tests must pass first)
+  # -----------------------------------------------------------------------
+  test:
+    if: github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pytest pytest-flask
+
+      - name: Run tests
+        run: pytest tests/ -v
+
+  deploy-dev:
+    if: github.ref == 'refs/heads/develop'
+    needs: test
+    environment: dev
+    runs-on: ubuntu-latest
+
+    env:
+      PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      REGION: ${{ vars.CLOUD_RUN_REGION }}
+      SERVICE: msn-web-app-dev
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: miyastudynotes-sa@miya-study-notes.iam.gserviceaccount.com
+
+      - uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Build and push image
+        run: gcloud builds submit --project "$PROJECT_ID" --tag "gcr.io/$PROJECT_ID/$SERVICE"
+
+      - name: Deploy to Cloud Run (dev)
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          service: ${{ env.SERVICE }}
+          image: gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }}
+          region: ${{ env.REGION }}
+          flags: >
+            --allow-unauthenticated
+            --service-account=miyastudynotes-sa@miya-study-notes.iam.gserviceaccount.com
+          env_vars: |
+            GCS_BUCKET_NAME=${{ vars.GCS_BUCKET_NAME }}
+            GOOGLE_SHEETS_ID=${{ vars.GOOGLE_SHEETS_ID }}
+            EKN110_FOLDER_ID=${{ vars.EKN110_FOLDER_ID }}
+            EKN120_FOLDER_ID=${{ vars.EKN120_FOLDER_ID }}
+            EKN214_FOLDER_ID=${{ vars.EKN214_FOLDER_ID }}
+            SMTP_HOST=${{ vars.SMTP_HOST }}
+            SMTP_PORT=${{ vars.SMTP_PORT }}
+            FROM_EMAIL=${{ vars.FROM_EMAIL }}
+            ADMIN_EMAIL=${{ vars.ADMIN_EMAIL }}
+            BASE_URL=${{ vars.BASE_URL }}
+            SMTP_USERNAME=${{ secrets.SMTP_USERNAME }}
+            SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
+            APPROVAL_SECRET=${{ secrets.APPROVAL_SECRET }}
+            SENTRY_DSN=${{ secrets.SENTRY_DSN }}
