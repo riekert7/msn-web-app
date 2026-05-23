@@ -34,6 +34,7 @@ def notify_admin_new_submission(submission_data: dict) -> bool:
             f"{_NTFY_BASE}/{topic}",
             data=body.encode("utf-8"),
             headers={
+                "Content-Type": "text/plain",
                 "Title": title,
                 "Priority": "default",
                 "Tags": "bell,money_bag",
