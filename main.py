@@ -310,7 +310,7 @@ def admin_callback():
             return render_template("action_message.html", title="Access denied", message="Your Google account is not authorised as an admin."), 403
         session["admin_email"] = email
         session["admin_name"] = user_info.get("name", email)
-        return redirect(url_for("admin_dashboard"))
+        return redirect(url_for("admin_submissions"))
     except Exception as e:
         logger.error("OAuth callback error: %s", e)
         return render_template("action_message.html", title="Login error", message=f"Something went wrong during login: {e}"), 500
@@ -325,16 +325,37 @@ def admin_logout():
 @app.get("/admin")
 @require_admin
 def admin_dashboard():
+    return redirect(url_for("admin_submissions"))
+
+
+@app.get("/admin/submissions")
+@require_admin
+def admin_submissions():
     submissions = get_all_submissions()
-    msg = request.args.get("msg")
-    err = request.args.get("err")
+    pending_count = sum(1 for s in submissions if (s.get("status") or "").lower() == "pending")
     return render_template(
-        "admin_dashboard.html",
+        "admin_submissions.html",
         submissions=submissions,
+        pending_count=pending_count,
         admin_email=session.get("admin_email"),
         admin_name=session.get("admin_name"),
-        msg=msg,
-        err=err,
+        msg=request.args.get("msg"),
+        err=request.args.get("err"),
+        active_tab="submissions",
+    )
+
+
+@app.get("/admin/share")
+@require_admin
+def admin_share_page():
+    return render_template(
+        "admin_share.html",
+        pending_count=None,
+        admin_email=session.get("admin_email"),
+        admin_name=session.get("admin_name"),
+        msg=request.args.get("msg"),
+        err=request.args.get("err"),
+        active_tab="share",
     )
 
 
@@ -367,7 +388,7 @@ def admin_share():
         total_cost = int(request.form.get("totalCost", 0))
 
         if not all((first_name, last_name, email, module, chapters)):
-            return redirect(url_for("admin_dashboard", err="Missing required fields"))
+            return redirect(url_for("admin_share_page", err="Missing required fields"))
 
         submission_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc).isoformat()
@@ -397,12 +418,12 @@ def admin_share():
         update_google_sheets_status(submission_id, "approved")
 
         logger.info("Admin direct-shared %s %s chapters with %s", module, chapters, email)
-        return redirect(url_for("admin_dashboard", msg=f"Shared {len(shared)} file(s) with {email}"))
+        return redirect(url_for("admin_share_page", msg=f"Shared {len(shared)} file(s) with {email}"))
 
     except Exception as e:
         sentry_sdk.capture_exception(e)
         logger.error("Admin share error: %s", e)
-        return redirect(url_for("admin_dashboard", err=str(e)))
+        return redirect(url_for("admin_share_page", err=str(e)))
 
 
 # ---------------------------------------------------------------------------

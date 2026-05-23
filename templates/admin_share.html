@@ -1,0 +1,222 @@
+{% extends "admin_base.html" %}
+{% block title %}Direct Share{% endblock %}
+
+{% block extra_styles %}
+  /* ── Direct share form ── */
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group label { font-size: 13px; font-weight: 600; color: #555; }
+  .form-group input,
+  .form-group select {
+    padding: 10px 12px;
+    border: 1.5px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    width: 100%;
+    transition: border-color 0.2s;
+  }
+  .form-group input:focus,
+  .form-group select:focus { outline: none; border-color: #667eea; }
+  .form-group.full { grid-column: 1 / -1; }
+
+  .chapters-section { display: none; margin-top: 6px; }
+  .chapters-section.active { display: block; }
+  .chapters-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .chapter-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1.5px solid #ddd;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: border-color 0.15s, background 0.15s;
+    user-select: none;
+  }
+  .chapter-label:hover { border-color: #667eea; background: #f5f6ff; }
+  .chapter-label:has(input:checked) { border-color: #667eea; background: #f0f2ff; }
+  .chapter-label input:checked + span { font-weight: 600; color: #667eea; }
+  .cost-display { margin-top: 10px; font-size: 14px; color: #667eea; font-weight: 600; }
+  .form-actions { margin-top: 20px; }
+
+  @media (max-width: 600px) {
+    .form-grid { grid-template-columns: 1fr; }
+    .form-group.full { grid-column: 1; }
+    .chapters-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+    .card-body { padding: 16px; }
+  }
+
+  /* ── Loading overlay ── */
+  .share-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+  }
+  .share-overlay.open { display: flex; }
+  .share-spinner-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 36px 40px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    max-width: 320px;
+    width: 90%;
+  }
+  .share-spinner {
+    width: 44px; height: 44px;
+    border: 4px solid #e9ecef;
+    border-top-color: #667eea;
+    border-radius: 50%;
+    animation: spin 0.75s linear infinite;
+    margin: 0 auto 18px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .share-spinner-text { font-size: 15px; font-weight: 600; color: #333; margin-bottom: 6px; }
+  .share-spinner-sub  { font-size: 12px; color: #999; }
+{% endblock %}
+
+{% block content %}
+<div class="page">
+
+  {% if msg %}<div class="banner banner-success">{{ msg }}</div>{% endif %}
+  {% if err %}<div class="banner banner-error">Error: {{ err }}</div>{% endif %}
+
+  <div class="card">
+    <div class="card-header">Direct Share</div>
+    <div class="card-body">
+      <form method="POST" action="/admin/share" id="shareForm">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>First name *</label>
+            <input type="text" name="firstName" required placeholder="e.g. Reba" />
+          </div>
+          <div class="form-group">
+            <label>Last name *</label>
+            <input type="text" name="lastName" required placeholder="e.g. Mothupi" />
+          </div>
+          <div class="form-group">
+            <label>Email *</label>
+            <input type="email" name="email" required placeholder="student@example.com" />
+          </div>
+          <div class="form-group">
+            <label>Phone</label>
+            <input type="tel" name="phone" placeholder="0791234567" />
+          </div>
+          <div class="form-group full">
+            <label>Module *</label>
+            <select name="module" id="moduleSelect" onchange="showChapters(this.value)" required>
+              <option value="">— Select module —</option>
+              <option value="EKN110">EKN110</option>
+              <option value="EKN120">EKN120</option>
+              <option value="EKN214">EKN214</option>
+            </select>
+          </div>
+          <div class="form-group full">
+            <label>Chapters *</label>
+            <div id="ekn110Chapters" class="chapters-section">
+              <div class="chapters-grid">
+                {% for n in range(1, 11) %}
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN110-{{ n }}" data-cost="15" onchange="calcCost()"><span>Ch {{ n }}</span></label>
+                {% endfor %}
+              </div>
+            </div>
+            <div id="ekn120Chapters" class="chapters-section">
+              <div class="chapters-grid">
+                {% for n in range(11, 21) %}
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN120-{{ n }}" data-cost="15" onchange="calcCost()"><span>Ch {{ n }}</span></label>
+                {% endfor %}
+              </div>
+            </div>
+            <div id="ekn214Chapters" class="chapters-section">
+              <div class="chapters-grid">
+                {% for n in [3,4,5,6,7,8,9] %}
+                <label class="chapter-label"><input type="checkbox" name="chapters" value="EKN214-{{ n }}" data-cost="20" onchange="calcCost()"><span>Ch {{ n }}</span></label>
+                {% endfor %}
+              </div>
+            </div>
+            <div id="costDisplay" class="cost-display" style="display:none;"></div>
+            <input type="hidden" name="totalCost" id="totalCostInput" value="0" />
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Share notes &amp; send email</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>
+
+<!-- Loading overlay -->
+<div class="share-overlay" id="shareOverlay">
+  <div class="share-spinner-card">
+    <div class="share-spinner"></div>
+    <div class="share-spinner-text">Sharing notes and sending email…</div>
+    <div class="share-spinner-sub">This may take up to 30 seconds</div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+  const chapterSections = {
+    EKN110: document.getElementById('ekn110Chapters'),
+    EKN120: document.getElementById('ekn120Chapters'),
+    EKN214: document.getElementById('ekn214Chapters'),
+  };
+
+  function showChapters(module) {
+    Object.entries(chapterSections).forEach(([key, el]) => {
+      if (key !== module) {
+        el.classList.remove('active');
+        el.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = false);
+      }
+    });
+    if (module && chapterSections[module]) chapterSections[module].classList.add('active');
+    calcCost();
+  }
+
+  function calcCost() {
+    const checked = document.querySelectorAll('input[name="chapters"]:checked');
+    let total = 0;
+    checked.forEach(cb => { total += parseInt(cb.dataset.cost) || 0; });
+    const display = document.getElementById('costDisplay');
+    document.getElementById('totalCostInput').value = total;
+    display.style.display = total > 0 ? 'block' : 'none';
+    display.textContent = total > 0 ? `Total: R${total}` : '';
+  }
+
+  // Double-submit guard + loading overlay
+  const shareForm = document.getElementById('shareForm');
+  const shareOverlay = document.getElementById('shareOverlay');
+  let shareSubmitting = false;
+
+  shareForm.addEventListener('submit', function(e) {
+    if (shareSubmitting) { e.preventDefault(); return; }
+    const btn = shareForm.querySelector('button[type="submit"]');
+    shareSubmitting = true;
+    btn.disabled = true;
+    shareOverlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    // Safety valve: re-enable after 90s if navigation never happened
+    setTimeout(() => {
+      shareSubmitting = false;
+      btn.disabled = false;
+      shareOverlay.classList.remove('open');
+      document.body.style.overflow = '';
+    }, 90000);
+  });
+{% endblock %}
