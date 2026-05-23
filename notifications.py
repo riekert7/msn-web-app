@@ -5,7 +5,7 @@ import requests
 
 logger = logging.getLogger(__name__)
 
-_NTFY_BASE = "https://ntfy.sh"
+_NTFY_BASE = os.environ.get("NTFY_BASE_URL")
 
 
 def notify_admin_new_submission(submission_data: dict) -> bool:
