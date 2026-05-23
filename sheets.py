@@ -55,6 +55,38 @@ def log_to_google_sheets(submission_data: dict) -> bool:
         return False
 
 
+_SHEET_COLS = [
+    "timestamp", "submission_id", "name", "email", "phone",
+    "module", "chapters", "total_cost", "file_name", "file_size",
+    "status", "approval_date", "_unused",
+]
+
+
+def get_all_submissions() -> list[dict]:
+    """Return all submission rows newest-first, skipping any header row."""
+    sheets_id = os.environ.get("GOOGLE_SHEETS_ID")
+    if not sheets_id:
+        logger.warning("GOOGLE_SHEETS_ID not configured")
+        return []
+    try:
+        result = _get_service().spreadsheets().values().get(
+            spreadsheetId=sheets_id, range="Submissions!A:M"
+        ).execute()
+        rows = result.get("values", [])
+        out = []
+        for row in rows:
+            # Skip header rows (column B won't be a UUID)
+            if len(row) < 2 or len(row[1]) != 36 or row[1].count("-") != 4:
+                continue
+            padded = row + [""] * (len(_SHEET_COLS) - len(row))
+            out.append(dict(zip(_SHEET_COLS, padded)))
+        out.reverse()
+        return out
+    except Exception as e:
+        logger.error("get_all_submissions failed: %s", e)
+        return []
+
+
 def update_google_sheets_status(submission_id: str, status: str, admin_action: dict | None = None) -> bool:
     """Update status (col K) and approval date (col L) for a submission row."""
     sheets_id = os.environ.get("GOOGLE_SHEETS_ID")
