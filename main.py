@@ -4,7 +4,7 @@ import logging
 import os
 import uuid
 from concurrent.futures import ThreadPoolExecutor
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from functools import wraps
 
 import sentry_sdk
@@ -41,6 +41,10 @@ sentry_sdk.init(
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-me")
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)
+app.config["SESSION_COOKIE_SECURE"] = True
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
 oauth = OAuth(app)
 google_oauth = oauth.register(
@@ -302,6 +306,7 @@ def admin_callback():
             return render_template("action_message.html", title="Login failed", message="Could not retrieve your email from Google."), 400
         if email not in _admin_emails():
             return render_template("action_message.html", title="Access denied", message="Your Google account is not authorised as an admin."), 403
+        session.permanent = True
         session["admin_email"] = email
         session["admin_name"] = user_info.get("name", email)
         return redirect(url_for("admin_submissions"))
