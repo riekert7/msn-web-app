@@ -149,28 +149,32 @@ document.addEventListener('DOMContentLoaded', function() {
         Object.keys(moduleSections).forEach(module => {
             const moduleTotal = calculateModuleCost(module);
             if (costDisplays[module]) {
-                costDisplays[module].textContent = `R ${moduleTotal}`;
+                costDisplays[module].textContent = `R ${formatCost(moduleTotal)}`;
             }
             grandTotal += moduleTotal;
         });
-        
+
         // Update total cost
         totalCost = grandTotal;
-        totalCostDisplay.textContent = `R ${totalCost}`;
+        totalCostDisplay.textContent = `R ${formatCost(totalCost)}`;
         
         updateSubmitButton();
     }
     
+    function formatCost(amount) {
+        return amount % 1 === 0 ? amount : amount.toFixed(2);
+    }
+
     function calculateModuleCost(module) {
         const checkboxes = document.querySelectorAll(`input[name="chapters"][value^="${module}"]`);
         let total = 0;
         
         checkboxes.forEach(checkbox => {
             if (checkbox.checked) {
-                total += parseInt(checkbox.dataset.cost) || 0;
+                total += parseFloat(checkbox.dataset.cost) || 0;
             }
         });
-        
+
         return total;
     }
     
@@ -460,7 +464,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     You'll receive access to your study materials via Google Drive once approved.
                 </p>
                 <p style="color: #155724; margin-top: 15px;">
-                    <strong>Total Cost:</strong> R ${totalCost}<br>
+                    <strong>Total Cost:</strong> R ${formatCost(totalCost)}<br>
                     <strong>Module:</strong> ${selectedModule}<br>
                     <strong>Chapters:</strong> ${getSelectedChapters().length} selected
                 </p>
