@@ -12,14 +12,8 @@ from authlib.integrations.flask_client import OAuth
 from flask import Flask, Response, jsonify, redirect, render_template, request, session, url_for
 from sentry_sdk.integrations.flask import FlaskIntegration
 
-from drive import share_study_materials
-from email_utils import (
-    send_student_approved_email,
-    send_student_denied_email,
-    send_submission_emails_in_background,
-    verify_approval_token,
-)
-from sheets import get_all_submissions, log_to_google_sheets, update_google_sheets_status
+from email_utils import verify_approval_token
+from sheets import get_all_submissions, log_to_google_sheets
 from storage import (
     get_file_from_gcs,
     get_submission_data,
@@ -27,6 +21,7 @@ from storage import (
     store_submission_metadata,
     update_submission_status,
 )
+from tasks import run_approve_tasks, run_deny_tasks, run_new_submission_tasks
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s [%(name)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -158,7 +153,7 @@ def submit():
         store_submission_metadata(submission_data)
         log_to_google_sheets(submission_data)
 
-        _executor.submit(send_submission_emails_in_background, submission_data)
+        _executor.submit(run_new_submission_tasks, submission_data)
 
         return jsonify({
             "success": True,
@@ -182,17 +177,6 @@ def submit():
 # Admin approve / deny (email link flow)
 # ---------------------------------------------------------------------------
 
-def _approve_background(submission_id: str, data: dict) -> None:
-    try:
-        shared = share_study_materials(data["email"], data["module"], data["chapters"])
-        update_submission_status(submission_id, "approved", {"shared_files": shared})
-        update_google_sheets_status(submission_id, "approved")
-        send_student_approved_email(data, shared)
-    except Exception as e:
-        sentry_sdk.capture_exception(e)
-        logger.error("[APPROVE] Background error for %s: %s", submission_id, e)
-
-
 @app.get("/approve/<submission_id>")
 def approve(submission_id: str):
     token = request.args.get("token")
@@ -204,22 +188,14 @@ def approve(submission_id: str):
         if data.get("status") not in ("pending", None):
             return render_template("action_message.html", title="Already processed", message=f"This request was already {data.get('status')}."), 200
 
+        # Sync GCS write prevents double-processing if the link is clicked twice
         update_submission_status(submission_id, "approved")
-        _executor.submit(_approve_background, submission_id, data)
+        _executor.submit(run_approve_tasks, submission_id, data)
         return render_template("approved.html"), 200
 
     except Exception as e:
         logger.error("Approve error for %s: %s", submission_id, e)
         return render_template("action_message.html", title="Error", message=f"Something went wrong: {e}"), 500
-
-
-def _deny_background(submission_id: str, data: dict) -> None:
-    try:
-        update_google_sheets_status(submission_id, "denied")
-        send_student_denied_email(data)
-    except Exception as e:
-        sentry_sdk.capture_exception(e)
-        logger.error("[DENY] Background error for %s: %s", submission_id, e)
 
 
 @app.get("/deny/<submission_id>")
@@ -233,8 +209,9 @@ def deny(submission_id: str):
         if data.get("status") not in ("pending", None):
             return render_template("action_message.html", title="Already processed", message=f"This request was already {data.get('status')}."), 200
 
+        # Sync GCS write prevents double-processing if the link is clicked twice
         update_submission_status(submission_id, "denied")
-        _executor.submit(_deny_background, submission_id, data)
+        _executor.submit(run_deny_tasks, submission_id, data)
         return render_template("denied.html"), 200
 
     except Exception as e:
@@ -246,38 +223,7 @@ def deny(submission_id: str):
 # View proof of payment (token-protected, used in admin email)
 # ---------------------------------------------------------------------------
 
-@app.get("/view-payment/<submission_id>")
-def view_payment(submission_id: str):
-    """Token-protected view used in admin notification emails."""
-    token = request.args.get("token")
-    if not verify_approval_token(submission_id, token or ""):
-        return "Invalid or expired link", 403
-    return _serve_payment_file(submission_id)
 
-
-@app.get("/admin/view-payment/<submission_id>")
-@require_admin
-def admin_view_payment(submission_id: str):
-    """Session-protected view used from the admin dashboard."""
-    return _serve_payment_file(submission_id)
-
-
-def _serve_payment_file(submission_id: str) -> Response:
-    try:
-        data = get_submission_data(submission_id)
-        gcs_path = data.get("gcs_file_path")
-        if not gcs_path:
-            return "No proof of payment on file", 404
-        file_data, content_type = get_file_from_gcs(gcs_path)
-        filename = data.get("file_name", "proof")
-        return Response(
-            file_data,
-            mimetype=content_type,
-            headers={"Content-Disposition": f'inline; filename="{filename}"'},
-        )
-    except Exception as e:
-        logger.error("view_payment error for %s: %s", submission_id, e)
-        return "Error retrieving file", 500
 
 
 # ---------------------------------------------------------------------------
@@ -357,15 +303,39 @@ def admin_share_page():
         active_tab="share",
     )
 
+    
+@app.get("/admin/view-payment/<submission_id>")
+@require_admin
+def admin_view_payment(submission_id: str):
+    """Session-protected view used from the admin dashboard."""
+    return _serve_payment_file(submission_id)
 
+
+def _serve_payment_file(submission_id: str) -> Response:
+    try:
+        data = get_submission_data(submission_id)
+        gcs_path = data.get("gcs_file_path")
+        if not gcs_path:
+            return "No proof of payment on file", 404
+        file_data, content_type = get_file_from_gcs(gcs_path)
+        filename = data.get("file_name", "proof")
+        return Response(
+            file_data,
+            mimetype=content_type,
+            headers={"Content-Disposition": f'inline; filename="{filename}"'},
+        )
+    except Exception as e:
+        logger.error("view_payment error for %s: %s", submission_id, e)
+        return "Error retrieving file", 500
+    
+    
 @app.post("/admin/deny/<submission_id>")
 @require_admin
 def admin_deny(submission_id: str):
     try:
         data = get_submission_data(submission_id)
         update_submission_status(submission_id, "denied")
-        update_google_sheets_status(submission_id, "denied")
-        send_student_denied_email(data)
+        _executor.submit(run_deny_tasks, submission_id, data)
         logger.info("Admin denied %s for %s", submission_id, data["email"])
         return jsonify({"ok": True})
     except Exception as e:
@@ -378,12 +348,10 @@ def admin_deny(submission_id: str):
 def admin_reshare(submission_id: str):
     try:
         data = get_submission_data(submission_id)
-        shared = share_study_materials(data["email"], data["module"], data["chapters"])
-        send_student_approved_email(data, shared)
-        update_submission_status(submission_id, "approved", {"shared_files": shared})
-        update_google_sheets_status(submission_id, "approved")
+        update_submission_status(submission_id, "approved")
+        _executor.submit(run_approve_tasks, submission_id, data)
         logger.info("Admin reshared %s for %s", submission_id, data["email"])
-        return jsonify({"ok": True, "shared_count": len(shared)})
+        return jsonify({"ok": True})
     except Exception as e:
         logger.error("Reshare error for %s: %s", submission_id, e)
         return jsonify({"ok": False, "error": str(e)}), 500
@@ -405,7 +373,6 @@ def admin_share():
             return redirect(url_for("admin_share_page", err="Missing required fields"))
 
         submission_id = str(uuid.uuid4())
-        now = datetime.now(UTC).isoformat()
         submission_data = {
             "submission_id": submission_id,
             "first_name": first_name,
@@ -418,7 +385,7 @@ def admin_share():
             "file_name": None,
             "file_size": 0,
             "file_mime_type": None,
-            "timestamp": now,
+            "timestamp": datetime.now(UTC).isoformat(),
             "status": "approved",
             "gcs_file_path": None,
             "admin_share": True,
@@ -426,13 +393,10 @@ def admin_share():
 
         store_submission_metadata(submission_data)
         log_to_google_sheets(submission_data)
+        _executor.submit(run_approve_tasks, submission_id, submission_data)
 
-        shared = share_study_materials(email, module, chapters)
-        send_student_approved_email(submission_data, shared)
-        update_google_sheets_status(submission_id, "approved")
-
-        logger.info("Admin direct-shared %s %s chapters with %s", module, chapters, email)
-        return redirect(url_for("admin_share_page", msg=f"Shared {len(shared)} file(s) with {email}"))
+        logger.info("Admin direct-share queued for %s %s with %s", module, chapters, email)
+        return redirect(url_for("admin_share_page", msg=f"Sharing {module} notes with {email} — student will receive an email shortly"))
 
     except Exception as e:
         sentry_sdk.capture_exception(e)

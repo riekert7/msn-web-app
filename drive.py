@@ -1,7 +1,6 @@
 import logging
 import os
 import re
-import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from google.auth import default
@@ -16,16 +15,10 @@ _FOLDER_IDS = {
     "EKN214": lambda: os.environ.get("EKN214_FOLDER_ID"),
 }
 
-# threading.local() gives each thread its own service client and SSL connection.
-# Sharing a single client across threads causes SSL collisions under concurrency.
-_thread_local = threading.local()
-
 
 def _get_service():
-    if not hasattr(_thread_local, "service"):
-        creds, _ = default(scopes=["https://www.googleapis.com/auth/drive"])
-        _thread_local.service = build("drive", "v3", credentials=creds)
-    return _thread_local.service
+    creds, _ = default(scopes=["https://www.googleapis.com/auth/drive"])
+    return build("drive", "v3", credentials=creds)
 
 
 def _chapter_number_exact_in_name(name: str, module: str, chapter_number: str) -> bool:

@@ -7,17 +7,10 @@ import ssl
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-import sentry_sdk
-
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# Token helpers (here to avoid a circular import with main.py)
-# ---------------------------------------------------------------------------
-
 def approval_token(submission_id: str) -> str:
-    """HMAC-SHA256 token for approve/deny links — prevents forgery."""
     secret = os.environ.get("APPROVAL_SECRET", "").encode()
     return hmac.new(secret, submission_id.encode(), hashlib.sha256).hexdigest()
 
@@ -30,9 +23,7 @@ _WHATSAPP_URL = "https://wa.me/27793688500"
 
 
 
-
 def _contact_block_html() -> str:
-    """Reusable 'Need help?' section for student emails."""
     return (
         f'<p style="margin-top:24px;margin-bottom:8px;font-size:15px;color:#495057;">Need help?</p>'
         f'<p style="margin:0 0 8px 0;">'
@@ -46,7 +37,6 @@ def _contact_block_html() -> str:
 
 
 def _smtp_config() -> tuple:
-    """Return (host, port, username, password, from_email) or raise if not configured."""
     host = os.environ.get("SMTP_HOST")
     port = int(os.environ.get("SMTP_PORT", "587"))
     username = os.environ.get("SMTP_USERNAME")
@@ -82,12 +72,7 @@ def _send_email(to: str, subject: str, text: str, html: str | None = None, reply
         return False
 
 
-# ---------------------------------------------------------------------------
-# Public email functions
-# ---------------------------------------------------------------------------
-
 def send_student_confirmation_email(submission_data: dict) -> bool:
-    """Confirm to the student that their request was received."""
     name = submission_data.get("first_name", "there")
     module = submission_data["module"]
     subject = "I received your study notes request"
@@ -109,7 +94,6 @@ def send_student_confirmation_email(submission_data: dict) -> bool:
 
 
 def send_student_approved_email(submission_data: dict, shared_files: list) -> bool:
-    """Tell the student their notes are ready and provide Drive links."""
     name = submission_data.get("first_name", "there")
     module = submission_data["module"]
     links_text = "\n".join(
@@ -139,7 +123,6 @@ def send_student_approved_email(submission_data: dict, shared_files: list) -> bo
 
 
 def send_student_denied_email(submission_data: dict) -> bool:
-    """Tell the student their request was not approved."""
     name = submission_data.get("first_name", "there")
     module = submission_data["module"]
     subject = "Update on your study notes request"
@@ -156,19 +139,3 @@ def send_student_denied_email(submission_data: dict) -> bool:
         f'<p style="margin-top:24px;font-size:14px;color:#6c757d;">Miya</p></div>'
     )
     return _send_email(submission_data["email"], subject, text, html=html, reply_to=_SUPPORT_EMAIL)
-
-
-def send_submission_emails_in_background(submission_data: dict) -> None:
-    """Run in thread pool: admin push notification + student confirmation email."""
-    from notifications import notify_admin_new_submission
-
-    sid = submission_data.get("submission_id", "?")
-    logger.info("Background notification task started for %s", sid)
-    try:
-        ok_admin = notify_admin_new_submission(submission_data)
-        logger.info("Admin push notification: %s", "OK" if ok_admin else "FAILED")
-        ok_student = send_student_confirmation_email(submission_data)
-        logger.info("Student confirmation: %s", "OK" if ok_student else "FAILED")
-    except Exception as e:
-        sentry_sdk.capture_exception(e)
-        logger.error("Background notification error for %s: %s", sid, e)

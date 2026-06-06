@@ -1,6 +1,5 @@
 import logging
 import os
-import threading
 from datetime import UTC, datetime
 
 from google.auth import default
@@ -8,14 +7,10 @@ from googleapiclient.discovery import build
 
 logger = logging.getLogger(__name__)
 
-_thread_local = threading.local()
-
 
 def _get_service():
-    if not hasattr(_thread_local, "service"):
-        creds, _ = default(scopes=["https://www.googleapis.com/auth/spreadsheets"])
-        _thread_local.service = build("sheets", "v4", credentials=creds)
-    return _thread_local.service
+    creds, _ = default(scopes=["https://www.googleapis.com/auth/spreadsheets"])
+    return build("sheets", "v4", credentials=creds)
 
 
 def log_to_google_sheets(submission_data: dict) -> bool:
