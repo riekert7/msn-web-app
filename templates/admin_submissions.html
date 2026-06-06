@@ -245,7 +245,9 @@
     const status = (s.status || '').toLowerCase();
     const isPending  = status === 'pending' || status === '' || status === 'unknown';
     const isApproved = status === 'approved';
-    const dateStr = s.timestamp ? s.timestamp.slice(0, 10) : '—';
+    const dateStr = s.timestamp
+      ? new Date(s.timestamp).toLocaleString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
+      : '—';
     const badgeClass = statusClass(s.status);
     const safeId = (s.submission_id || '').replace(/[^a-zA-Z0-9-]/g, '');
     const safeName = (s.name || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
