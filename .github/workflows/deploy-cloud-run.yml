@@ -61,6 +61,7 @@ jobs:
             FROM_EMAIL=${{ vars.FROM_EMAIL }}
             ADMIN_EMAIL=${{ vars.ADMIN_EMAIL }}
             BASE_URL=${{ vars.BASE_URL }}
+            FLASK_ENV=${{ vars.FLASK_ENV }}
             SMTP_USERNAME=${{ secrets.SMTP_USERNAME }}
             SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
             APPROVAL_SECRET=${{ secrets.APPROVAL_SECRET }}
@@ -140,6 +141,7 @@ jobs:
             FROM_EMAIL=${{ vars.FROM_EMAIL }}
             ADMIN_EMAIL=${{ vars.ADMIN_EMAIL }}
             BASE_URL=${{ vars.BASE_URL }}
+            FLASK_ENV=${{ vars.FLASK_ENV }}
             SMTP_USERNAME=${{ secrets.SMTP_USERNAME }}
             SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
             APPROVAL_SECRET=${{ secrets.APPROVAL_SECRET }}

@@ -1,6 +1,5 @@
-"""TDD tests for the /deny route — mirrors test_approve.py."""
 import time
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from tests.conftest import make_approval_token
 
@@ -22,7 +21,7 @@ def test_deny_already_processed(client, pending_submission):
 
 
 def test_deny_gcs_status_updated_synchronously(client, pending_submission):
-    """GCS must be written to 'denied' before the response is returned."""
+    """GCS must be written to 'denied' before the response returns — prevents double-click."""
     status_written = []
 
     def fake_update(sid, status, extra=None):
@@ -32,11 +31,8 @@ def test_deny_gcs_status_updated_synchronously(client, pending_submission):
     with (
         patch("main.get_submission_data", return_value=pending_submission),
         patch("main.update_submission_status", side_effect=fake_update),
-        patch("main.update_google_sheets_status"),
-        patch("main.send_student_denied_email"),
-        patch("main._executor", create=True) as mock_executor,
+        patch("main._executor") as mock_executor,
     ):
-        from unittest.mock import MagicMock
         mock_executor.submit = MagicMock()
         token = make_approval_token(SID)
         resp = client.get(f"/deny/{SID}?token={token}")
@@ -48,7 +44,6 @@ def test_deny_gcs_status_updated_synchronously(client, pending_submission):
 def test_deny_returns_before_background_work_completes(client, pending_submission):
     """Deny response must arrive in < 0.5s even when email is slow."""
     import threading
-
     slow_started = threading.Event()
 
     def slow_email(*args, **kwargs):
@@ -59,8 +54,8 @@ def test_deny_returns_before_background_work_completes(client, pending_submissio
     with (
         patch("main.get_submission_data", return_value=pending_submission),
         patch("main.update_submission_status", return_value={**pending_submission, "status": "denied"}),
-        patch("main.update_google_sheets_status"),
-        patch("main.send_student_denied_email", side_effect=slow_email),
+        patch("tasks.update_google_sheets_status"),
+        patch("tasks.send_student_denied_email", side_effect=slow_email),
     ):
         token = make_approval_token(SID)
         t0 = time.monotonic()
@@ -78,8 +73,8 @@ def test_deny_background_calls_sheets_and_email(client, pending_submission):
     with (
         patch("main.get_submission_data", return_value=pending_submission),
         patch("main.update_submission_status", return_value={**pending_submission, "status": "denied"}),
-        patch("main.update_google_sheets_status", side_effect=lambda *a, **kw: calls.append("sheets")),
-        patch("main.send_student_denied_email", side_effect=lambda *a, **kw: calls.append("email")),
+        patch("tasks.update_google_sheets_status", side_effect=lambda *a, **kw: calls.append("sheets")),
+        patch("tasks.send_student_denied_email", side_effect=lambda *a, **kw: calls.append("email")),
     ):
         token = make_approval_token(SID)
         resp = client.get(f"/deny/{SID}?token={token}")
