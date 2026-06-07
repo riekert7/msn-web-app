@@ -79,10 +79,6 @@ def require_admin(f):
     return decorated
 
 
-# ---------------------------------------------------------------------------
-# Pages
-# ---------------------------------------------------------------------------
-
 @app.get("/")
 def home():
     return render_template("index.html")
@@ -92,10 +88,6 @@ def home():
 def form():
     return render_template("form.html")
 
-
-# ---------------------------------------------------------------------------
-# Form submission
-# ---------------------------------------------------------------------------
 
 @app.post("/submit")
 def submit():
@@ -174,13 +166,6 @@ def submit():
         return jsonify({"error": "Internal server error", "message": "Failed to process submission. Please try again."}), 500, headers
 
 
-# ---------------------------------------------------------------------------
-# Admin approve / deny (email link flow)
-# ---------------------------------------------------------------------------
-
-# ---------------------------------------------------------------------------
-# Admin dashboard (Google SSO)
-# ---------------------------------------------------------------------------
 
 @app.get("/admin/login")
 def admin_login():
@@ -302,9 +287,10 @@ def admin_deny(submission_id: str):
 def admin_reshare(submission_id: str):
     try:
         data = get_submission_data(submission_id)
+        update_submission_status(submission_id, "approved")
+        update_google_sheets_status(submission_id, "approved")
         shared = share_study_materials(data["email"], data["module"], data["chapters"])
         update_submission_status(submission_id, "approved", {"shared_files": shared})
-        update_google_sheets_status(submission_id, "approved")
         send_student_approved_email(data, shared)
         logger.info("Admin reshared %s for %s", submission_id, data["email"])
         return jsonify({"ok": True, "shared_count": len(shared)})
@@ -361,18 +347,10 @@ def admin_share():
         return redirect(url_for("admin_share_page", err=str(e)))
 
 
-# ---------------------------------------------------------------------------
-# Health check
-# ---------------------------------------------------------------------------
-
 @app.get("/healthz")
 def healthz():
     return jsonify({"status": "healthy", "timestamp": datetime.now(UTC).isoformat(), "service": "webapp"})
 
-
-# ---------------------------------------------------------------------------
-# Debug endpoints
-# ---------------------------------------------------------------------------
 
 @app.get("/debug-sentry")
 def debug_sentry():

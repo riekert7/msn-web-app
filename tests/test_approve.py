@@ -31,7 +31,9 @@ def test_reshare_calls_drive(admin_client, pending_submission):
 
 
 def test_reshare_updates_status_and_sheets(admin_client, pending_submission):
-    """GCS status and Sheets must both be updated after Drive sharing."""
+    """GCS is written twice (before Drive for fast refresh, after Drive with file info).
+    Sheets is written once before Drive sharing begins."""
+    from unittest.mock import call
     with (
         patch("main.get_submission_data", return_value=pending_submission),
         patch("main.share_study_materials", return_value=SHARED_FILES),
@@ -41,7 +43,9 @@ def test_reshare_updates_status_and_sheets(admin_client, pending_submission):
     ):
         admin_client.post(f"/admin/reshare/{SID}")
 
-    mock_gcs.assert_called_once_with(SID, "approved", {"shared_files": SHARED_FILES})
+    assert mock_gcs.call_count == 2
+    mock_gcs.assert_any_call(SID, "approved")
+    mock_gcs.assert_any_call(SID, "approved", {"shared_files": SHARED_FILES})
     mock_sheets.assert_called_once_with(SID, "approved")
 
 
