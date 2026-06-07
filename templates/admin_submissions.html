@@ -418,7 +418,7 @@
   });
 
   function setBadge(submissionId, status, label) {
-    document.querySelectorAll(`#badge-${submissionId}`).forEach(badge => {
+    document.querySelectorAll(`#row-${submissionId} .status-badge`).forEach(badge => {
       badge.className = `status-badge status-${status}`;
       badge.textContent = label;
     });
