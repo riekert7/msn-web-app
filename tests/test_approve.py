@@ -1,154 +1,89 @@
-import threading
-import time
-from unittest.mock import MagicMock, patch
-
-from tests.conftest import make_approval_token
+"""Tests for the admin reshare route (/admin/reshare/<submission_id>)."""
+from unittest.mock import patch
 
 SID = "test-sub-001"
+SHARED_FILES = [{"id": "file-1", "name": "EKN110 - Chapter 1", "chapter": "1"}]
 
 
-def test_approve_invalid_token(client):
-    resp = client.get(f"/approve/{SID}?token=bad-token")
-    assert resp.status_code == 403
+def test_reshare_requires_admin(client, pending_submission):
+    """Unauthenticated requests must redirect to login."""
+    resp = client.post(f"/admin/reshare/{SID}")
+    assert resp.status_code == 302
+    assert "/admin/login" in resp.headers["Location"]
 
 
-def test_approve_missing_token(client):
-    resp = client.get(f"/approve/{SID}")
-    assert resp.status_code == 403
-
-
-def test_approve_already_processed(client, pending_submission):
-    already_approved = {**pending_submission, "status": "approved"}
-    with patch("main.get_submission_data", return_value=already_approved):
-        token = make_approval_token(SID)
-        resp = client.get(f"/approve/{SID}?token={token}")
-    assert resp.status_code == 200
-    assert b"Already processed" in resp.data
-
-
-def test_approve_gcs_status_updated_synchronously(client, pending_submission):
-    """GCS must be written to 'approved' before the response returns — prevents double-click."""
-    status_written = []
-
-    def fake_update_status(sid, status, extra=None):
-        status_written.append(status)
-        return {**pending_submission, "status": status}
-
+def test_reshare_calls_drive(admin_client, pending_submission):
+    """share_study_materials must be called with the submission's details."""
     with (
         patch("main.get_submission_data", return_value=pending_submission),
-        patch("main.update_submission_status", side_effect=fake_update_status),
-        patch("main._executor") as mock_executor,
+        patch("main.share_study_materials", return_value=SHARED_FILES) as mock_drive,
+        patch("main.update_submission_status"),
+        patch("main.update_google_sheets_status"),
+        patch("main.send_student_approved_email"),
     ):
-        mock_executor.submit = MagicMock()
-        token = make_approval_token(SID)
-        resp = client.get(f"/approve/{SID}?token={token}")
+        admin_client.post(f"/admin/reshare/{SID}")
 
-    assert resp.status_code == 200
-    assert "approved" in status_written
+    mock_drive.assert_called_once_with(
+        pending_submission["email"],
+        pending_submission["module"],
+        pending_submission["chapters"],
+    )
 
 
-def test_approve_returns_before_background_work_completes(client, pending_submission):
-    """HTTP response must arrive before slow Drive work finishes (< 0.5s)."""
-    slow_drive_done = threading.Event()
-
-    def slow_drive(*args, **kwargs):
-        time.sleep(1.0)
-        slow_drive_done.set()
-        return []
-
+def test_reshare_updates_status_and_sheets(admin_client, pending_submission):
+    """GCS status and Sheets must both be updated after Drive sharing."""
     with (
         patch("main.get_submission_data", return_value=pending_submission),
-        patch("main.update_submission_status", return_value={**pending_submission, "status": "approved"}),
-        patch("tasks.share_study_materials", side_effect=slow_drive),
-        patch("tasks.update_google_sheets_status"),
-        patch("tasks.update_submission_status", return_value={**pending_submission, "status": "approved"}),
-        patch("tasks.send_student_approved_email"),
+        patch("main.share_study_materials", return_value=SHARED_FILES),
+        patch("main.update_submission_status") as mock_gcs,
+        patch("main.update_google_sheets_status") as mock_sheets,
+        patch("main.send_student_approved_email"),
     ):
-        token = make_approval_token(SID)
-        t0 = time.monotonic()
-        resp = client.get(f"/approve/{SID}?token={token}")
-        elapsed = time.monotonic() - t0
+        admin_client.post(f"/admin/reshare/{SID}")
 
-    assert resp.status_code == 200
-    assert elapsed < 0.5, f"Response took {elapsed:.2f}s — approve route must return immediately"
+    mock_gcs.assert_called_once_with(SID, "approved", {"shared_files": SHARED_FILES})
+    mock_sheets.assert_called_once_with(SID, "approved")
 
 
-def test_approve_background_calls_drive_then_email(client, pending_submission):
-    """Background task must call share_study_materials BEFORE send_student_approved_email."""
-    call_order = []
-
-    def track_drive(*args, **kwargs):
-        call_order.append("drive")
-        return [{"id": "file-1", "name": "Chapter 1", "chapter": "1"}]
-
-    def track_email(*args, **kwargs):
-        call_order.append("email")
-        return True
-
+def test_reshare_sends_student_email(admin_client, pending_submission):
+    """Approval email must be sent with the shared files list."""
     with (
         patch("main.get_submission_data", return_value=pending_submission),
-        patch("main.update_submission_status", return_value={**pending_submission, "status": "approved"}),
-        patch("tasks.share_study_materials", side_effect=track_drive),
-        patch("tasks.update_google_sheets_status"),
-        patch("tasks.update_submission_status", return_value={**pending_submission, "status": "approved"}),
-        patch("tasks.send_student_approved_email", side_effect=track_email),
+        patch("main.share_study_materials", return_value=SHARED_FILES),
+        patch("main.update_submission_status"),
+        patch("main.update_google_sheets_status"),
+        patch("main.send_student_approved_email") as mock_email,
     ):
-        token = make_approval_token(SID)
-        resp = client.get(f"/approve/{SID}?token={token}")
-        time.sleep(0.3)
+        admin_client.post(f"/admin/reshare/{SID}")
 
-    assert resp.status_code == 200
-    assert call_order.index("drive") < call_order.index("email"), f"Expected drive before email, got {call_order}"
+    mock_email.assert_called_once_with(pending_submission, SHARED_FILES)
 
 
-def test_approve_background_calls_sheets(client, pending_submission):
-    """Background task must call update_google_sheets_status."""
-    sheets_calls = []
-
+def test_reshare_returns_ok_with_count(admin_client, pending_submission):
+    """Response must be {"ok": true, "shared_count": N}."""
     with (
         patch("main.get_submission_data", return_value=pending_submission),
-        patch("main.update_submission_status", return_value={**pending_submission, "status": "approved"}),
-        patch("tasks.share_study_materials", return_value=[]),
-        patch("tasks.update_google_sheets_status", side_effect=lambda *a, **kw: sheets_calls.append(a)),
-        patch("tasks.update_submission_status", return_value={**pending_submission, "status": "approved"}),
-        patch("tasks.send_student_approved_email"),
+        patch("main.share_study_materials", return_value=SHARED_FILES),
+        patch("main.update_submission_status"),
+        patch("main.update_google_sheets_status"),
+        patch("main.send_student_approved_email"),
     ):
-        token = make_approval_token(SID)
-        resp = client.get(f"/approve/{SID}?token={token}")
-        time.sleep(0.3)
+        resp = admin_client.post(f"/admin/reshare/{SID}")
 
     assert resp.status_code == 200
-    assert len(sheets_calls) >= 1, "update_google_sheets_status must be called in background"
+    data = resp.get_json()
+    assert data["ok"] is True
+    assert data["shared_count"] == len(SHARED_FILES)
 
 
-def test_approve_double_click_idempotent(client, pending_submission):
-    """Drive sharing must only run once even if Approve is clicked twice."""
-    drive_calls = []
-    submission_state = {"data": pending_submission}
-
-    def fake_get(sid):
-        return submission_state["data"]
-
-    def fake_update(sid, status, extra=None):
-        submission_state["data"] = {**submission_state["data"], "status": status}
-        return submission_state["data"]
-
-    def fake_drive(*args, **kwargs):
-        drive_calls.append(1)
-        return []
-
-    token = make_approval_token(SID)
+def test_reshare_returns_error_on_drive_failure(admin_client, pending_submission):
+    """Drive failure must return 500 with ok=false."""
     with (
-        patch("main.get_submission_data", side_effect=fake_get),
-        patch("main.update_submission_status", side_effect=fake_update),
-        patch("tasks.share_study_materials", side_effect=fake_drive),
-        patch("tasks.update_google_sheets_status"),
-        patch("tasks.update_submission_status", return_value={**pending_submission, "status": "approved"}),
-        patch("tasks.send_student_approved_email"),
+        patch("main.get_submission_data", return_value=pending_submission),
+        patch("main.share_study_materials", side_effect=Exception("Drive error")),
+        patch("main.update_submission_status"),
     ):
-        client.get(f"/approve/{SID}?token={token}")
-        time.sleep(0.3)
-        resp2 = client.get(f"/approve/{SID}?token={token}")
+        resp = admin_client.post(f"/admin/reshare/{SID}")
 
-    assert b"Already processed" in resp2.data
-    assert len(drive_calls) == 1, "Drive must only be called once even if Approve is clicked twice"
+    assert resp.status_code == 500
+    assert resp.get_json()["ok"] is False

@@ -348,23 +348,20 @@ document.addEventListener('DOMContentLoaded', function() {
         return Array.from(checkboxes).map(cb => cb.value);
     }
     
+    let isSubmitting = false;
+
     function handleFormSubmission(event) {
         event.preventDefault();
-        
-        // Final validation
-        if (!validateForm()) {
-            return;
-        }
-        
-        // Show loading state
+
+        if (isSubmitting) return;
+        if (!validateForm()) return;
+
+        isSubmitting = true;
         submitBtn.disabled = true;
-        document.getElementById('loadingSpinner').style.display = 'block';
         submitBtn.textContent = 'Processing...';
-        
-        // Prepare form data
+        document.getElementById('loadingSpinner').style.display = 'block';
+
         const formData = new FormData();
-        
-        // Add form fields
         formData.append('firstName', document.getElementById('firstName').value.trim());
         formData.append('lastName', document.getElementById('lastName').value.trim());
         formData.append('email', emailInput.value.trim());
@@ -374,32 +371,31 @@ document.addEventListener('DOMContentLoaded', function() {
         formData.append('totalCost', totalCost);
         formData.append('proofOfPayment', uploadedFile);
         formData.append('timestamp', new Date().toISOString());
-        
-        // Submit to backend
+
         submitFormData(formData);
     }
-    
+
     async function submitFormData(formData) {
         try {
             const response = await fetch('/submit', {
                 method: 'POST',
                 body: formData
             });
-            
+
             if (response.ok) {
-                const result = await response.json();
                 showSuccessMessage();
+                // isSubmitting intentionally stays true — form is replaced on success
             } else {
                 throw new Error('Submission failed');
             }
         } catch (error) {
             console.error('Submission error:', error);
             showErrorMessage();
-        } finally {
-            // Reset loading state
+            // Re-enable only on error so the user can try again
+            isSubmitting = false;
             submitBtn.disabled = false;
-            document.getElementById('loadingSpinner').style.display = 'none';
             submitBtn.textContent = 'Submit Request';
+            document.getElementById('loadingSpinner').style.display = 'none';
         }
     }
     
