@@ -38,19 +38,6 @@ body {
     margin: 0;
 }
 
-.sale-banner {
-    background: linear-gradient(135deg, #ff6b35 0%, #f7c59f 100%);
-    color: #5a1a00;
-    text-align: center;
-    padding: 12px 20px;
-    font-size: 0.95rem;
-    border-bottom: 2px solid #ff6b35;
-}
-
-.sale-banner s {
-    opacity: 0.6;
-}
-
 .notice-section {
     background-color: #f8f9fa;
     padding: 25px 30px;

@@ -131,7 +131,7 @@ def submit():
             "phone": request.form["phone"].strip(),
             "module": request.form["module"],
             "chapters": chapters,
-            "total_cost": int(request.form["totalCost"]),
+            "total_cost": float(request.form["totalCost"]),
             "file_name": file.filename,
             "file_size": round(len(file_data) / 1024 / 1024, 2),
             "file_mime_type": file.content_type,
@@ -310,7 +310,7 @@ def admin_share():
         phone = request.form.get("phone", "").strip()
         module = request.form["module"]
         chapters = [c.strip() for c in request.form.getlist("chapters") if c.strip()]
-        total_cost = int(request.form.get("totalCost", 0))
+        total_cost = float(request.form.get("totalCost", 0))
 
         if not all((first_name, last_name, email, module, chapters)):
             return redirect(url_for("admin_share_page", err="Missing required fields"))
