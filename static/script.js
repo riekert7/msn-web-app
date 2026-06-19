@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function setupBankingDetailsCopy() {
         document.querySelectorAll('.bank-copy-btn').forEach(btn => {
             btn.addEventListener('click', async () => {
-                const target = document.getElementById(btn.dataset.target);
+                const target = document.getElementById(btn.dataset.copyTarget);
                 if (!target) return;
                 try {
                     await navigator.clipboard.writeText(target.textContent.trim());
