@@ -194,7 +194,7 @@
     pageSize: 25,
   };
 
-  // ── Init from URL params ──
+
   (function initFromUrl() {
     const p = new URLSearchParams(window.location.search);
     if (p.get('q'))      state.query  = p.get('q');
@@ -206,7 +206,7 @@
     document.getElementById('statusFilter').value  = state.status;
   })();
 
-  // ── Filter / sort helpers ──
+
   function rowMatchesQuery(row, q) {
     if (!q) return true;
     const lower = q.toLowerCase();
@@ -235,7 +235,6 @@
     });
   }
 
-  // ── Row HTML builder ──
   function statusClass(s) {
     const low = (s || '').toLowerCase();
     return ['approved','pending','denied'].includes(low) ? `status-${low}` : 'status-unknown';
@@ -284,7 +283,6 @@
     </tr>`;
   }
 
-  // ── Render functions ──
   function renderRows(rows) {
     const tbody = document.getElementById('submissionsBody');
     const noResults = document.getElementById('noResults');
@@ -372,7 +370,6 @@
     history.replaceState(null, '', qs ? '?' + qs : window.location.pathname);
   }
 
-  // ── Main render pipeline ──
   function render() {
     const filtered = applyFilters(allRows);
     const sorted   = applySort(filtered);
@@ -394,7 +391,6 @@
 
   function goPage(n) { setState({ page: n }); window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
-  // ── Wire controls ──
   document.getElementById('searchInput').addEventListener('input', e => {
     setState({ query: e.target.value });
   });
@@ -411,7 +407,6 @@
     setState({ query: '', module: '', status: '' });
   });
 
-  // ── Sortable headers ──
   document.querySelectorAll('thead th.sortable').forEach(th => {
     th.addEventListener('click', () => {
       const key = th.dataset.sortKey;
@@ -422,72 +417,68 @@
     });
   });
 
-  // ── Approve / Reshare (AJAX) ──
+  function setBadge(submissionId, status, label) {
+    document.querySelectorAll(`#row-${submissionId} .status-badge`).forEach(badge => {
+      badge.className = `status-badge status-${status}`;
+      badge.textContent = label;
+    });
+  }
+
+  function setActions(submissionId, html) {
+    const cell = document.getElementById(`actions-${submissionId}`);
+    if (cell) cell.innerHTML = html;
+  }
+
+  function reshareBtn(submissionId) {
+    return `<button class="btn btn-reshare-done" onclick="approve(this,'${submissionId}')" title="Reshare">Reshare</button>` +
+           `<button class="btn btn-pop" onclick="openPop('${submissionId}','')" title="View proof of payment">View POP</button>`;
+  }
+
   async function approve(btn, submissionId) {
-    const original = btn.textContent;
     btn.disabled = true;
     btn.textContent = 'Sharing…';
+
+    setBadge(submissionId, 'approved', 'approved');
+
     try {
       const res = await fetch(`/admin/reshare/${submissionId}`, { method: 'POST' });
       const data = await res.json();
       if (data.ok) {
-        document.querySelectorAll(`#badge-${submissionId}`).forEach(badge => {
-          badge.className = 'status-badge status-approved';
-          badge.textContent = 'approved';
-        });
-        const actionsCell = document.getElementById(`actions-${submissionId}`);
-        if (actionsCell) {
-          actionsCell.innerHTML =
-            `<button class="btn btn-reshare-done" onclick="approve(this,'${submissionId}')" title="Reshare">Reshare</button>` +
-            `<button class="btn btn-pop" onclick="openPop('${submissionId}','')" title="Preview proof of payment">View POP</button>`;
-        }
+        setActions(submissionId, reshareBtn(submissionId));
         const row = allRows.find(r => r.submission_id === submissionId);
         if (row) row.status = 'approved';
       } else {
-        btn.disabled = false;
-        btn.textContent = original;
-        alert(`Failed: ${data.error || 'unknown error'}`);
+        setBadge(submissionId, 'error', 'error');
+        setActions(submissionId, reshareBtn(submissionId));
       }
     } catch (e) {
-      btn.disabled = false;
-      btn.textContent = original;
-      alert(`Network error: ${e.message}`);
+      setBadge(submissionId, 'error', 'error');
+      setActions(submissionId, reshareBtn(submissionId));
     }
   }
 
-  // ── Deny (AJAX) ──
   async function deny(btn, submissionId) {
-    const original = btn.textContent;
     btn.disabled = true;
     btn.textContent = 'Denying…';
+
+    setBadge(submissionId, 'denied', 'denied');
+
     try {
       const res = await fetch(`/admin/deny/${submissionId}`, { method: 'POST' });
       const data = await res.json();
       if (data.ok) {
-        document.querySelectorAll(`#badge-${submissionId}`).forEach(badge => {
-          badge.className = 'status-badge status-denied';
-          badge.textContent = 'denied';
-        });
-        const actionsCell = document.getElementById(`actions-${submissionId}`);
-        if (actionsCell) {
-          actionsCell.innerHTML =
-            `<button class="btn btn-reshare" onclick="approve(this,'${submissionId}')" title="Reshare">Reshare</button>` +
-            `<button class="btn btn-pop" onclick="openPop('${submissionId}','')" title="Preview proof of payment">View POP</button>`;
-        }
+        setActions(submissionId, reshareBtn(submissionId));
         const row = allRows.find(r => r.submission_id === submissionId);
         if (row) row.status = 'denied';
       } else {
-        btn.disabled = false;
-        btn.textContent = original;
-        alert(`Deny failed: ${data.error || 'unknown error'}`);
+        setBadge(submissionId, 'error', 'error');
+        setActions(submissionId, reshareBtn(submissionId));
       }
     } catch (e) {
-      btn.disabled = false;
-      btn.textContent = original;
-      alert(`Network error: ${e.message}`);
+      setBadge(submissionId, 'error', 'error');
+      setActions(submissionId, reshareBtn(submissionId));
     }
   }
 
-  // ── Initial render ──
   render();
 {% endblock %}

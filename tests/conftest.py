@@ -1,12 +1,9 @@
 """Shared fixtures for all tests."""
-import hashlib
-import hmac
 import os
 from unittest.mock import patch
 
 # Minimal env vars so modules import without real GCP credentials
 os.environ.setdefault("GCS_BUCKET_NAME", "test-bucket")
-os.environ.setdefault("APPROVAL_SECRET", "test-secret")
 os.environ.setdefault("ADMIN_EMAIL", "admin@example.com")
 os.environ.setdefault("BASE_URL", "http://localhost:5000")
 os.environ.setdefault("SMTP_HOST", "smtp.example.com")
@@ -44,6 +41,16 @@ def client(app):
 
 
 @pytest.fixture
+def admin_client(app):
+    """Test client with an active admin session."""
+    c = app.test_client()
+    with c.session_transaction() as sess:
+        sess["admin_email"] = "admin@example.com"
+        sess["admin_name"] = "Test Admin"
+    return c
+
+
+@pytest.fixture
 def pending_submission():
     return {
         "submission_id": "test-sub-001",
@@ -61,8 +68,3 @@ def pending_submission():
         "status": "pending",
         "gcs_file_path": "submissions/test-sub-001/proof.pdf",
     }
-
-
-def make_approval_token(submission_id: str) -> str:
-    secret = os.environ["APPROVAL_SECRET"].encode()
-    return hmac.new(secret, submission_id.encode(), hashlib.sha256).hexdigest()

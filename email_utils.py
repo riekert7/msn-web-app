@@ -1,5 +1,3 @@
-import hashlib
-import hmac
 import logging
 import os
 import smtplib
@@ -8,15 +6,6 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 logger = logging.getLogger(__name__)
-
-
-def approval_token(submission_id: str) -> str:
-    secret = os.environ.get("APPROVAL_SECRET", "").encode()
-    return hmac.new(secret, submission_id.encode(), hashlib.sha256).hexdigest()
-
-
-def verify_approval_token(submission_id: str, token: str) -> bool:
-    return bool(token) and hmac.compare_digest(approval_token(submission_id), token)
 
 _SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL", "info@miyastudynotes.co.za")
 _WHATSAPP_URL = "https://wa.me/27793688500"

@@ -1,85 +1,63 @@
-import time
-from unittest.mock import MagicMock, patch
-
-from tests.conftest import make_approval_token
+"""Tests for the admin deny route (/admin/deny/<submission_id>)."""
+from unittest.mock import patch
 
 SID = "test-sub-001"
 
 
-def test_deny_invalid_token(client):
-    resp = client.get(f"/deny/{SID}?token=wrong")
-    assert resp.status_code == 403
+def test_deny_requires_admin(client, pending_submission):
+    """Unauthenticated requests must redirect to login."""
+    resp = client.post(f"/admin/deny/{SID}")
+    assert resp.status_code == 302
+    assert "/admin/login" in resp.headers["Location"]
 
 
-def test_deny_already_processed(client, pending_submission):
-    denied = {**pending_submission, "status": "denied"}
-    with patch("main.get_submission_data", return_value=denied):
-        token = make_approval_token(SID)
-        resp = client.get(f"/deny/{SID}?token={token}")
-    assert resp.status_code == 200
-    assert b"Already processed" in resp.data
-
-
-def test_deny_gcs_status_updated_synchronously(client, pending_submission):
-    """GCS must be written to 'denied' before the response returns — prevents double-click."""
-    status_written = []
-
-    def fake_update(sid, status, extra=None):
-        status_written.append(status)
-        return {**pending_submission, "status": status}
-
+def test_deny_updates_status_and_sheets(admin_client, pending_submission):
+    """GCS status and Sheets must both be updated to denied."""
     with (
         patch("main.get_submission_data", return_value=pending_submission),
-        patch("main.update_submission_status", side_effect=fake_update),
-        patch("main._executor") as mock_executor,
+        patch("main.update_submission_status") as mock_gcs,
+        patch("main.update_google_sheets_status") as mock_sheets,
+        patch("main.send_student_denied_email"),
     ):
-        mock_executor.submit = MagicMock()
-        token = make_approval_token(SID)
-        resp = client.get(f"/deny/{SID}?token={token}")
+        admin_client.post(f"/admin/deny/{SID}")
 
-    assert resp.status_code == 200
-    assert "denied" in status_written
+    mock_gcs.assert_called_once_with(SID, "denied")
+    mock_sheets.assert_called_once_with(SID, "denied")
 
 
-def test_deny_returns_before_background_work_completes(client, pending_submission):
-    """Deny response must arrive in < 0.5s even when email is slow."""
-    import threading
-    slow_started = threading.Event()
-
-    def slow_email(*args, **kwargs):
-        slow_started.set()
-        time.sleep(1.0)
-        return True
-
+def test_deny_sends_student_email(admin_client, pending_submission):
+    """Denial email must be sent to the student."""
     with (
         patch("main.get_submission_data", return_value=pending_submission),
-        patch("main.update_submission_status", return_value={**pending_submission, "status": "denied"}),
-        patch("tasks.update_google_sheets_status"),
-        patch("tasks.send_student_denied_email", side_effect=slow_email),
+        patch("main.update_submission_status"),
+        patch("main.update_google_sheets_status"),
+        patch("main.send_student_denied_email") as mock_email,
     ):
-        token = make_approval_token(SID)
-        t0 = time.monotonic()
-        resp = client.get(f"/deny/{SID}?token={token}")
-        elapsed = time.monotonic() - t0
+        admin_client.post(f"/admin/deny/{SID}")
 
-    assert resp.status_code == 200
-    assert elapsed < 0.5, f"Deny took {elapsed:.2f}s — must return immediately"
+    mock_email.assert_called_once_with(pending_submission)
 
 
-def test_deny_background_calls_sheets_and_email(client, pending_submission):
-    """Background task must call Sheets update and send denied email."""
-    calls = []
-
+def test_deny_returns_ok(admin_client, pending_submission):
+    """Successful deny must return {"ok": true}."""
     with (
         patch("main.get_submission_data", return_value=pending_submission),
-        patch("main.update_submission_status", return_value={**pending_submission, "status": "denied"}),
-        patch("tasks.update_google_sheets_status", side_effect=lambda *a, **kw: calls.append("sheets")),
-        patch("tasks.send_student_denied_email", side_effect=lambda *a, **kw: calls.append("email")),
+        patch("main.update_submission_status"),
+        patch("main.update_google_sheets_status"),
+        patch("main.send_student_denied_email"),
     ):
-        token = make_approval_token(SID)
-        resp = client.get(f"/deny/{SID}?token={token}")
-        time.sleep(0.3)
+        resp = admin_client.post(f"/admin/deny/{SID}")
 
     assert resp.status_code == 200
-    assert "sheets" in calls
-    assert "email" in calls
+    assert resp.get_json()["ok"] is True
+
+
+def test_deny_returns_error_on_failure(admin_client, pending_submission):
+    """Any failure must return 500 with ok=false."""
+    with (
+        patch("main.get_submission_data", side_effect=Exception("GCS error")),
+    ):
+        resp = admin_client.post(f"/admin/deny/{SID}")
+
+    assert resp.status_code == 500
+    assert resp.get_json()["ok"] is False

@@ -12,8 +12,9 @@ from authlib.integrations.flask_client import OAuth
 from flask import Flask, Response, jsonify, redirect, render_template, request, session, url_for
 from sentry_sdk.integrations.flask import FlaskIntegration
 
-from email_utils import verify_approval_token
-from sheets import get_all_submissions, log_to_google_sheets
+from drive import share_study_materials
+from email_utils import send_student_approved_email, send_student_denied_email
+from sheets import get_all_submissions, log_to_google_sheets, update_google_sheets_status
 from storage import (
     get_file_from_gcs,
     get_submission_data,
@@ -21,7 +22,7 @@ from storage import (
     store_submission_metadata,
     update_submission_status,
 )
-from tasks import run_approve_tasks, run_deny_tasks, run_new_submission_tasks
+from tasks import run_new_submission_tasks
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s [%(name)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -78,10 +79,6 @@ def require_admin(f):
     return decorated
 
 
-# ---------------------------------------------------------------------------
-# Pages
-# ---------------------------------------------------------------------------
-
 @app.get("/")
 def home():
     return render_template("index.html")
@@ -91,10 +88,6 @@ def home():
 def form():
     return render_template("form.html")
 
-
-# ---------------------------------------------------------------------------
-# Form submission
-# ---------------------------------------------------------------------------
 
 @app.post("/submit")
 def submit():
@@ -138,7 +131,7 @@ def submit():
             "phone": request.form["phone"].strip(),
             "module": request.form["module"],
             "chapters": chapters,
-            "total_cost": int(request.form["totalCost"]),
+            "total_cost": float(request.form["totalCost"]),
             "file_name": file.filename,
             "file_size": round(len(file_data) / 1024 / 1024, 2),
             "file_mime_type": file.content_type,
@@ -173,62 +166,6 @@ def submit():
         return jsonify({"error": "Internal server error", "message": "Failed to process submission. Please try again."}), 500, headers
 
 
-# ---------------------------------------------------------------------------
-# Admin approve / deny (email link flow)
-# ---------------------------------------------------------------------------
-
-@app.get("/approve/<submission_id>")
-def approve(submission_id: str):
-    token = request.args.get("token")
-    if not verify_approval_token(submission_id, token or ""):
-        return render_template("action_message.html", title="Invalid or expired link", message="This approval link is invalid or has expired."), 403
-
-    try:
-        data = get_submission_data(submission_id)
-        if data.get("status") not in ("pending", None):
-            return render_template("action_message.html", title="Already processed", message=f"This request was already {data.get('status')}."), 200
-
-        # Sync GCS write prevents double-processing if the link is clicked twice
-        update_submission_status(submission_id, "approved")
-        _executor.submit(run_approve_tasks, submission_id, data)
-        return render_template("approved.html"), 200
-
-    except Exception as e:
-        logger.error("Approve error for %s: %s", submission_id, e)
-        return render_template("action_message.html", title="Error", message=f"Something went wrong: {e}"), 500
-
-
-@app.get("/deny/<submission_id>")
-def deny(submission_id: str):
-    token = request.args.get("token")
-    if not verify_approval_token(submission_id, token or ""):
-        return render_template("action_message.html", title="Invalid or expired link", message="This link is invalid or has expired."), 403
-
-    try:
-        data = get_submission_data(submission_id)
-        if data.get("status") not in ("pending", None):
-            return render_template("action_message.html", title="Already processed", message=f"This request was already {data.get('status')}."), 200
-
-        # Sync GCS write prevents double-processing if the link is clicked twice
-        update_submission_status(submission_id, "denied")
-        _executor.submit(run_deny_tasks, submission_id, data)
-        return render_template("denied.html"), 200
-
-    except Exception as e:
-        logger.error("Deny error for %s: %s", submission_id, e)
-        return render_template("action_message.html", title="Error", message=f"Something went wrong: {e}"), 500
-
-
-# ---------------------------------------------------------------------------
-# View proof of payment (token-protected, used in admin email)
-# ---------------------------------------------------------------------------
-
-
-
-
-# ---------------------------------------------------------------------------
-# Admin dashboard (Google SSO)
-# ---------------------------------------------------------------------------
 
 @app.get("/admin/login")
 def admin_login():
@@ -335,10 +272,12 @@ def admin_deny(submission_id: str):
     try:
         data = get_submission_data(submission_id)
         update_submission_status(submission_id, "denied")
-        _executor.submit(run_deny_tasks, submission_id, data)
+        update_google_sheets_status(submission_id, "denied")
+        send_student_denied_email(data)
         logger.info("Admin denied %s for %s", submission_id, data["email"])
         return jsonify({"ok": True})
     except Exception as e:
+        sentry_sdk.capture_exception(e)
         logger.error("Deny error for %s: %s", submission_id, e)
         return jsonify({"ok": False, "error": str(e)}), 500
 
@@ -349,10 +288,14 @@ def admin_reshare(submission_id: str):
     try:
         data = get_submission_data(submission_id)
         update_submission_status(submission_id, "approved")
-        _executor.submit(run_approve_tasks, submission_id, data)
+        update_google_sheets_status(submission_id, "approved")
+        shared = share_study_materials(data["email"], data["module"], data["chapters"])
+        update_submission_status(submission_id, "approved", {"shared_files": shared})
+        send_student_approved_email(data, shared)
         logger.info("Admin reshared %s for %s", submission_id, data["email"])
-        return jsonify({"ok": True})
+        return jsonify({"ok": True, "shared_count": len(shared)})
     except Exception as e:
+        sentry_sdk.capture_exception(e)
         logger.error("Reshare error for %s: %s", submission_id, e)
         return jsonify({"ok": False, "error": str(e)}), 500
 
@@ -367,7 +310,7 @@ def admin_share():
         phone = request.form.get("phone", "").strip()
         module = request.form["module"]
         chapters = [c.strip() for c in request.form.getlist("chapters") if c.strip()]
-        total_cost = int(request.form.get("totalCost", 0))
+        total_cost = float(request.form.get("totalCost", 0))
 
         if not all((first_name, last_name, email, module, chapters)):
             return redirect(url_for("admin_share_page", err="Missing required fields"))
@@ -404,18 +347,10 @@ def admin_share():
         return redirect(url_for("admin_share_page", err=str(e)))
 
 
-# ---------------------------------------------------------------------------
-# Health check
-# ---------------------------------------------------------------------------
-
 @app.get("/healthz")
 def healthz():
     return jsonify({"status": "healthy", "timestamp": datetime.now(UTC).isoformat(), "service": "webapp"})
 
-
-# ---------------------------------------------------------------------------
-# Debug endpoints
-# ---------------------------------------------------------------------------
 
 @app.get("/debug-sentry")
 def debug_sentry():
